@@ -84,11 +84,6 @@ class LoginWindow(QWidget):
         self.login_button.setObjectName("primaryButton")
         self.login_button.clicked.connect(self.login)
 
-        # Create the clear button
-        self.clear_button = QPushButton("Clear")
-        self.clear_button.setObjectName("secondaryButton")
-        self.clear_button.clicked.connect(self.clear_fields)
-
         # Create the registration navigation button
         self.register_button = QPushButton("Create Volunteer Account")
         self.register_button.setObjectName("linkButton")
@@ -96,7 +91,6 @@ class LoginWindow(QWidget):
 
         # Arrange the clear and login buttons in one row
         button_row = QHBoxLayout()
-        button_row.addWidget(self.clear_button)
         button_row.addWidget(self.login_button, 2)
 
         # Add the widgets to the main layout
@@ -126,13 +120,6 @@ class LoginWindow(QWidget):
             QLineEdit.EchoMode.Normal
             if checked else QLineEdit.EchoMode.Password
         )
-
-    # Clear the username, password, and status message
-    def clear_fields(self):
-        self.username.clear()
-        self.password.clear()
-        self.status.clear()
-        self.username.setFocus()
 
     # Validate the login details and open the correct dashboard
     def login(self):

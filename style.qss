@@ -1,18 +1,53 @@
+/* ==============================================================================
+   1. GLOBAL APPLICATION & BASE STYLES
+   Connected Files: ALL FILES (main.py, login_window.py, registration_window.py,
+                    volunteer_dashboard.py, admin_dashboard.py)
+   ============================================================================== */
 
+/* Ambient light blue background (matches 1VOLdashboarddesign.jpg) */
 QWidget {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    font-family: "Segoe UI", Arial, sans-serif;
+    background-color: #e0f2fe; 
+    color: #0f172a;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     font-size: 14px;
 }
 
+/* Scroll Area & Custom Scrollbars */
+QScrollArea {
+    background-color: transparent;
+    border: none;
+}
+
+QScrollBar:vertical {
+    background: #f1f5f9;
+    width: 8px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #94a3b8;
+}
+
+
+/* ==============================================================================
+   2. LOGIN & REGISTRATION WINDOWS
+   Connected Files: login_window.py, registration_window.py
+   ============================================================================== */
+
+/* App Header Titles ("POST-FLOOD WASTE", "JOIN THE COMMUNITY") */
 QLabel#appTitle {
-    color: #2563eb;
-    font-size: 20px;
+    color: #1e3a8a;
+    font-size: 22px;
     font-weight: 800;
     letter-spacing: 1px;
 }
 
+/* App Header Subtitles ("MANAGEMENT SYSTEM") */
 QLabel#appSubtitle {
     color: #64748b;
     font-size: 11px;
@@ -20,79 +55,106 @@ QLabel#appSubtitle {
     letter-spacing: 2px;
 }
 
+/* Page Headings ("Welcome back", "Create an account") */
 QLabel#pageHeading {
-    color: #1e293b;
-    font-size: 24px;
+    color: #0f172a;
+    font-size: 22px;
     font-weight: 700;
 }
 
+/* Helper / Muted Footnote Text */
 QLabel#mutedText {
     color: #64748b;
     font-size: 12px;
 }
 
+/* Text Input Fields (Username, Password, Full Name) */
 QLineEdit {
-    background: white;
-    border: 1px solid #cbd5e1;
-    border-radius: 9px;
-    padding: 12px;
-    min-height: 18px;
-    color: #1e293b;
-    selection-background-color: #2563eb;
+    background-color: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #0f172a;
+    selection-background-color: #1e3a8a;
+    selection-color: #ffffff;
 }
 
 QLineEdit:hover {
-    border-color: #93c5fd;
+    border-color: #94a3b8;
 }
 
 QLineEdit:focus {
-    border: 2px solid #2563eb;
+    border: 2px solid #1e3a8a;
+    background-color: #ffffff;
 }
 
+/* Text Area Multi-line Inputs */
+QTextEdit {
+    background-color: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: #0f172a;
+}
+
+QTextEdit:focus {
+    border: 2px solid #1e3a8a;
+}
+
+/* Checkboxes ("Show password") */
 QCheckBox {
     spacing: 8px;
     color: #334155;
 }
 
 QCheckBox:hover {
-    color: #2563eb;
+    color: #1e3a8a;
 }
 
-QPushButton {
-    border: none;
-    border-radius: 9px;
-    padding: 11px 14px;
-    font-weight: 600;
-}
-
+/* Action Buttons (Primary / Secondary / Link Buttons) */
 QPushButton#primaryButton {
-    background-color: #2563eb;
-    color: white;
+    background-color: #1e3a8a;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: bold;
 }
 
 QPushButton#primaryButton:hover {
-    background-color: #1d4ed8;
-}
-
-QPushButton#primaryButton:pressed {
     background-color: #1e40af;
 }
 
+QPushButton#primaryButton:pressed {
+    background-color: #1d4ed8;
+}
+
 QPushButton#secondaryButton {
-    background-color: #e2e8f0;
-    color: #334155;
+    background-color: #ffffff;
+    color: #0f172a;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 9px 14px;
+    font-weight: 600;
 }
 
 QPushButton#secondaryButton:hover {
-    background-color: #cbd5e1;
+    background-color: #f1f5f9;
 }
 
 QPushButton#linkButton {
     background: transparent;
-    color: #2563eb;
+    color: #1e3a8a;
+    font-weight: 600;
     text-decoration: underline;
+    border: none;
 }
 
+QPushButton#linkButton:hover {
+    color: #2563eb;
+}
+
+/* Status Labels (Error & Success Feedback) */
 QLabel#statusLabel {
     color: #64748b;
     min-height: 20px;
@@ -100,16 +162,251 @@ QLabel#statusLabel {
 
 QLabel#statusLabel[state="error"] {
     color: #dc2626;
+    font-weight: bold;
 }
 
 QLabel#statusLabel[state="success"] {
     color: #16a34a;
+    font-weight: bold;
 }
 
-QLabel#dashboardInfo {
-    background: white;
-    color: #1e293b;
+
+/* ==============================================================================
+   3. VOLUNTEER DASHBOARD & SUB-PAGES
+   Connected File: volunteer_dashboard.py (Matches 1VOLdashboarddesign.jpg)
+   ============================================================================== */
+
+/* Header Bar Badge ("Volunteer Dashboard") */
+QLabel#headerBadgePill {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    border: 1.5px solid #0f172a;
+    border-radius: 18px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Header Subtitle ("Post-Flood Waste Management") */
+QLabel#headerSubtitle {
+    color: #334155;
+    font-size: 14px;
+    font-weight: 500;
+    margin-left: 6px;
+}
+
+/* Log Out Pill Button */
+QPushButton#logoutPillButton {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    border: 1.5px solid #0f172a;
+    border-radius: 18px;
+    padding: 6px 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QPushButton#logoutPillButton:hover {
+    background-color: #cbd5e1;
+}
+
+/* Welcome Title ("Welcome, Samuel Ramos") */
+QLabel#welcomeTitle {
+    font-size: 26px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+/* Main Dashboard Cards (Tasks & Ring Gauge Cards) */
+QFrame#volCard, QFrame#dashboardCard {
+    background-color: #ffffff;
     border: 1px solid #e2e8f0;
+    border-radius: 20px;
+}
+
+QLabel#cardHeading {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    border: none;
+}
+
+QLabel#cardDateLabel {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+/* Task Item Green Check Badges */
+QLabel#taskCheckBadge {
+    background-color: #dcfce7;
+    color: #16a34a;
+    font-weight: bold;
+    font-size: 11px;
+    border-radius: 10px;
+    padding: 3px 6px;
+}
+
+QLabel#taskItemText {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+/* Gauge Bottom Tinted Box */
+QFrame#tintedInfoBox {
+    background-color: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 10px;
+}
+
+QLabel#tintedBoxText {
+    font-size: 13px;
+    font-style: italic;
+    font-weight: 600;
+    color: #334155;
+}
+
+/* Sub-page Item Containers (Drives, Reports, Rewards Grid) */
+QFrame#driveItemBox, QFrame#rewardGridCard {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
     border-radius: 12px;
-    padding: 22px;
+    padding: 10px;
+}
+
+QListWidget#volListWidget, QListWidget#reportsList, QListWidget#announcementList {
+    background: transparent;
+    border: none;
+}
+
+QListWidget::item {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+}
+
+QListWidget::item:hover {
+    background-color: #f1f5f9;
+}
+
+QLabel#versionLabel {
+    color: #64748b;
+    font-size: 11px;
+}
+
+
+/* ==============================================================================
+   4. ADMIN DASHBOARD STYLES
+   Connected File: admin_dashboard.py
+   ============================================================================== */
+
+/* Admin Role Header Badge */
+QLabel#adminBadge, QLabel#roleBadge {
+    background-color: #ffffff;
+    color: #0f172a;
+    font-weight: bold;
+    border: 1.5px solid #0f172a;
+    padding: 4px 12px;
+    border-radius: 12px;
+}
+
+/* Admin Feature Cards */
+QFrame#adminCard {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px;
+}
+
+
+/* ==============================================================================
+   5. NAVIGATION BARS (CAPSULE PILLS & CIRCULAR BUTTONS)
+   Connected Files: volunteer_dashboard.py, admin_dashboard.py
+   ============================================================================== */
+
+/* Navigation Outer Container */
+QFrame#bottomNavFrame, QFrame#navBarFrame {
+    background-color: #ffffff;
+    border: 1px solid #000000;
+    border-radius: 28px;
+}
+
+/* --- A. CAPSULE PILL NAV BUTTONS (Matches 1VOLdashboarddesign.jpg) --- */
+QPushButton#capsuleNavBtn {
+    background-color: transparent;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 18px;
+}
+
+QPushButton#capsuleNavBtn:hover {
+    background-color: #f1f5f9;
+}
+
+/* Active Capsule Pill (Dark Navy Blue) */
+QPushButton#capsuleNavBtn[active="true"] {
+    background-color: #d9e1e9;       /* Removes filled background */
+    color: #0f172a;                       /* Dark text color */
+    border: 1.5px solid transparent;          /* Border added to match outline style */
+    border-radius: 20px;                  /* Pill shape radius */
+    padding: 10px 22px;
+    font-weight: 700;
+}
+
+/* --- B. CIRCULAR NAV BUTTONS --- */
+QPushButton#navCircleButton {
+    background-color: #ffffff;
+    color: #000000;
+    font-weight: bold;
+    font-size: 11px;
+    border: 2px solid #000000;
+    border-radius: 34px; /* 50% of 68px width/height */
+}
+
+QPushButton#navCircleButton:hover {
+    background-color: #e5e5e5;
+}
+
+QPushButton#navCircleButton[active="true"] {
+    background-color: #000000;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 11px;
+    border: 2px solid #000000;
+    border-radius: 34px;
+}
+
+
+/* ==============================================================================
+   6. DIALOGS & COMBOBOXES
+   Connected Files: volunteer_dashboard.py, admin_dashboard.py
+   ============================================================================== */
+
+QDialog {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+}
+
+QComboBox {
+    background-color: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px;
+    color: #0f172a;
+}
+
+QComboBox::drop-down {
+    border: none;
 }
