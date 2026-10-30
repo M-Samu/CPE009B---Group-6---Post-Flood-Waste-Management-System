@@ -111,3 +111,20 @@ def register_volunteer(full_name: str, username: str, password: str) -> tuple[bo
 
     # Return a success message after registration
     return True, "Registration successful. You can now log in."
+
+def award_volunteer_points(username: str, points_to_add: int) -> tuple[bool, str]:
+    accounts = load_accounts()
+    target_account = next(
+        (acc for acc in accounts if acc.username.casefold() == username.strip().casefold()),
+        None
+    )
+
+    if not target_account:
+        return False, "Volunteer account not found."
+
+    if target_account.role != "Volunteer":
+        return False, "Can only award points to Volunteer accounts."
+
+    target_account.points += points_to_add
+    save_accounts(accounts)
+    return True, f"Successfully awarded {points_to_add} points to {target_account.full_name}!"

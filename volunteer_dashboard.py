@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
 
 from waste_management_models import Session, hash_password
 from app_utils import current_datetime
-from data_manager import load_accounts, save_accounts
+from data_manager import load_accounts, save_accounts, find_account
 from data_store import DataStore
 
 # ==============================================================================
@@ -132,7 +132,7 @@ class VolunteerOverviewPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        # Build task items with green checkmarks (matching 1VOLdashboarddesign.jpg)
+        # Build task items with green checkmarks
         for task in DataStore.tasks:
             t_row = QHBoxLayout()
             check_icon = QLabel("✔")
@@ -279,10 +279,8 @@ class VolunteerWasteReportsPage(QWidget):
                 f"(Submitted: {submitted_at})"
             )
 
-            # Keep the existing format for the admin dashboard.
             DataStore.waste_reports.append(report_entry)
 
-            # Store the extra details for the volunteer's profile feed.
             if not hasattr(DataStore, "report_records"):
                 DataStore.report_records = []
 
@@ -374,7 +372,6 @@ class VolunteerScheduledDrivesPage(QWidget):
                 def handler():
                     account = Session.current_account
 
-                    # Require a valid ID before joining a cleanup drive.
                     if (
                         account is None
                         or not account.valid_id_path
@@ -388,7 +385,6 @@ class VolunteerScheduledDrivesPage(QWidget):
                         )
                         return
 
-                    # Continue with the existing joining process.
                     d["joined"] = True
 
                     QMessageBox.information(
@@ -415,9 +411,19 @@ class VolunteerScheduledDrivesPage(QWidget):
 class VolunteerRewardsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        
+        # Single main layout for the page
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(12)
 
+        # 1. Available Points Display Label at the top
+        self.lbl_user_points = QLabel(self)
+        self.lbl_user_points.setObjectName("pageHeading")
+        self.lbl_user_points.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.lbl_user_points)
+
+        # 2. Rewards Card Container
         card = QFrame()
         card.setObjectName("volCard")
         card_layout = QVBoxLayout(card)
@@ -466,6 +472,26 @@ class VolunteerRewardsPage(QWidget):
 
         layout.addWidget(card)
 
+        # Load initial points
+        self.refresh_user_points()
+
+    def refresh_user_points(self):
+        """Fetches the latest points from storage and updates the label."""
+        if Session.current_account:
+            updated_account = find_account(Session.current_account.username)
+            if updated_account:
+                Session.current_account = updated_account
+            
+            points_val = Session.current_account.points
+            self.lbl_user_points.setText(f"⭐ Available Points: {points_val}")
+        else:
+            self.lbl_user_points.setText("⭐ Available Points: 0")
+
+    def showEvent(self, event):
+        """Automatically refreshes points every time you open the rewards page."""
+        super().showEvent(event)
+        self.refresh_user_points()
+
 # ==============================================================================
 # Screen 5: Notifications Feed
 # ==============================================================================
@@ -511,11 +537,9 @@ class VolunteerAnnouncementsPage(QWidget):
 
             self.feed_container.addWidget(box)
 
-
 # ==============================================================================
 # Screen 6: Volunteer Profile (View Profile / Edit Profile)
 # ==============================================================================
-
 class VolunteerProfilePage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -737,58 +761,58 @@ class VolunteerProfilePage(QWidget):
             )
 
     def upload_valid_id(self):
-            account = Session.current_account
-    
-            if account is None:
-                QMessageBox.warning(self, "Error", "No active account found.")
-                return
-    
-            file_path, _ = QFileDialog.getOpenFileName(
-                self,
-                "Upload Valid ID",
-                "",
-                "ID Documents (*.png *.jpg *.jpeg *.pdf)"
-            )
-    
-            if not file_path:
-                return
-    
-            source = Path(file_path)
-            target_dir = Path("data") / "valid_ids"
-            target_dir.mkdir(parents=True, exist_ok=True)
-    
-            safe_username = re.sub(r"[^A-Za-z0-9_-]", "_", account.username)
-            target = target_dir / f"{safe_username}_valid_id{source.suffix.lower()}"
-    
-            try:
-                shutil.copy2(source, target)
-                account.valid_id_path = str(target.resolve())
-    
-                accounts = load_accounts()
-    
-                for index, saved_account in enumerate(accounts):
-                    if saved_account.username == account.username:
-                        accounts[index] = account
-                        break
-                else:
-                    accounts.append(account)
-    
-                save_accounts(accounts)
-    
-                QMessageBox.information(
-                    self,
-                    "Upload Successful",
-                    "Your valid ID has been uploaded successfully."
-                )
-    
-                self.refresh_data()
-    
-            except OSError as error:
-                QMessageBox.critical(
-                    self,
-                    "Upload Failed",
-                    f"Unable to save the ID:\n{error}"
+        account = Session.current_account
+
+        if account is None:
+            QMessageBox.warning(self, "Error", "No active account found.")
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Upload Valid ID",
+            "",
+            "ID Documents (*.png *.jpg *.jpeg *.pdf)"
         )
+
+        if not file_path:
+            return
+
+        source = Path(file_path)
+        target_dir = Path("data") / "valid_ids"
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_username = re.sub(r"[^A-Za-z0-9_-]", "_", account.username)
+        target = target_dir / f"{safe_username}_valid_id{source.suffix.lower()}"
+
+        try:
+            shutil.copy2(source, target)
+            account.valid_id_path = str(target.resolve())
+
+            accounts = load_accounts()
+
+            for index, saved_account in enumerate(accounts):
+                if saved_account.username == account.username:
+                    accounts[index] = account
+                    break
+            else:
+                accounts.append(account)
+
+            save_accounts(accounts)
+
+            QMessageBox.information(
+                self,
+                "Upload Successful",
+                "Your valid ID has been uploaded successfully."
+            )
+
+            self.refresh_data()
+
+        except OSError as error:
+            QMessageBox.critical(
+                self,
+                "Upload Failed",
+                f"Unable to save the ID:\n{error}"
+            )
 
     def update_avatar(self):
         account = Session.current_account
@@ -850,7 +874,6 @@ class VolunteerProfilePage(QWidget):
         content = QWidget()
         content_layout = QVBoxLayout(content)
 
-        # Current picture preview
         photo_row = QHBoxLayout()
 
         preview = QLabel("No profile picture")
@@ -936,7 +959,6 @@ class VolunteerProfilePage(QWidget):
         photo_row.addLayout(photo_column, 1)
         content_layout.addLayout(photo_row)
 
-        # Editable profile fields
         form = QFormLayout()
         form.setVerticalSpacing(10)
 
@@ -1021,7 +1043,6 @@ class VolunteerProfilePage(QWidget):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
 
-        # Read the entered information
         full_name = txt_name.text().strip()
         email = txt_email.text().strip()
         phone = txt_phone.text().strip()
@@ -1031,7 +1052,6 @@ class VolunteerProfilePage(QWidget):
         emergency_name = txt_emergency_name.text().strip()
         emergency_phone = txt_emergency_phone.text().strip()
 
-        # Validate the required full name
         if len(full_name) < 2:
             QMessageBox.warning(
                 self,
@@ -1040,7 +1060,6 @@ class VolunteerProfilePage(QWidget):
             )
             return
 
-        # Validate email when provided
         if email and not re.fullmatch(
             r"[^@\s]+@[^@\s]+\.[^@\s]+",
             email
@@ -1052,7 +1071,6 @@ class VolunteerProfilePage(QWidget):
             )
             return
 
-        # Validate date of birth when provided
         if dob:
             try:
                 datetime.strptime(dob, "%Y-%m-%d")
@@ -1064,7 +1082,6 @@ class VolunteerProfilePage(QWidget):
                 )
                 return
 
-        # Copy the selected picture into the project data folder
         profile_picture = getattr(
             account, "profile_picture", ""
         ) or ""
@@ -1091,7 +1108,6 @@ class VolunteerProfilePage(QWidget):
                 target.relative_to(project_dir)
             )
 
-        # Update the signed-in account
         account.full_name = full_name
         account.email = email
         account.phone = phone
@@ -1104,7 +1120,6 @@ class VolunteerProfilePage(QWidget):
         account.emergency_contact_phone = emergency_phone
         account.profile_picture = profile_picture
 
-        # Update the saved account record
         accounts = load_accounts()
         saved_account = next(
             (
@@ -1138,10 +1153,7 @@ class VolunteerProfilePage(QWidget):
         saved_account.profile_picture = account.profile_picture
 
         save_accounts(accounts)
-
-        # Keep the session using the updated saved account
         Session.login(saved_account)
-
         self.refresh_data()
 
         QMessageBox.information(
@@ -1152,7 +1164,6 @@ class VolunteerProfilePage(QWidget):
 
     def show_gallery(self):
         account = Session.current_account
-
         if account is None:
             return
 
@@ -1168,7 +1179,6 @@ class VolunteerProfilePage(QWidget):
 
     def show_recent_posts(self):
         account = Session.current_account
-
         if account is None:
             return
 
@@ -1406,7 +1416,6 @@ class VolunteerProfilePage(QWidget):
             )
             return
 
-        # Remove this account's stored profile picture and valid ID.
         for stored_path in (
             account.profile_picture,
             account.valid_id_path,
@@ -1438,7 +1447,7 @@ class VolunteerProfilePage(QWidget):
             "- Waste reports submitted\n"
             "- Cleanup drives attended\n"
             "- Achievement badges"
-    )
+        )
 
 # ==============================================================================
 # MAIN VOLUNTEER DASHBOARD CLASS
@@ -1453,10 +1462,9 @@ class VolunteerDashboard(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 15)
         main_layout.setSpacing(12)
 
-        # --- HEADER BAR (Matches Capsule Pill Layout in 1VOLdashboarddesign.jpg) ---
+        # --- HEADER BAR ---
         top_bar = QHBoxLayout()
         
-        # Left Badge Pill
         badge_pill = QLabel("Volunteer Dashboard")
         badge_pill.setObjectName("headerBadgePill")
 
@@ -1486,9 +1494,9 @@ class VolunteerDashboard(QWidget):
         self.stack.addWidget(self.page_overview)          # Index 0
         self.stack.addWidget(self.page_waste_reports)     # Index 1
         self.stack.addWidget(self.page_scheduled_drives)  # Index 2
-        self.stack.addWidget(self.page_rewards)            # Index 3
-        self.stack.addWidget(self.page_announcements)      # Index 4
-        self.stack.addWidget(self.page_profile)            # Index 5
+        self.stack.addWidget(self.page_rewards)           # Index 3
+        self.stack.addWidget(self.page_announcements)     # Index 4
+        self.stack.addWidget(self.page_profile)           # Index 5
 
         main_layout.addWidget(self.stack, 1)
 
@@ -1498,7 +1506,6 @@ class VolunteerDashboard(QWidget):
         nav_layout = QHBoxLayout(nav_frame)
         nav_layout.setContentsMargins(15, 8, 15, 8)
 
-        # Capsule nav buttons matching exact labels/icons from design
         self.btn_nav_home = QPushButton("    Home  ")
         self.btn_nav_reports = QPushButton(" Waste\nReports")
         self.btn_nav_drives = QPushButton(" Cleanup\nDrives")
@@ -1525,7 +1532,6 @@ class VolunteerDashboard(QWidget):
 
         main_layout.addWidget(nav_frame)
 
-        # Footer version label
         version_label = QLabel("In Development")
         version_label.setObjectName("versionLabel")
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)

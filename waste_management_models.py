@@ -34,6 +34,7 @@ class Account:
     emergency_contact_phone: str = ""
     profile_picture: str = ""
     valid_id_path: str = ""
+    points: int = 0
 
     @classmethod
     def create(
@@ -78,6 +79,7 @@ class Account:
             "emergency_contact_phone": self.emergency_contact_phone,
             "profile_picture": self.profile_picture,
             "valid_id_path": self.valid_id_path,
+            "points": self.points,  
         }
 
     @classmethod
@@ -102,6 +104,7 @@ class Account:
             ),
             profile_picture=data.get("profile_picture", ""),
             valid_id_path=data.get("valid_id_path", ""),
+            points=data.get("points", 0)
         )
 
 class Session:

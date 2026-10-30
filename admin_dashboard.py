@@ -1,8 +1,11 @@
+from email import message
+from operator import index
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QStackedWidget, QFrame, QListWidget, QLineEdit, QTextEdit, 
-    QMessageBox
+    QMessageBox, QComboBox, QSpinBox
 )
 
 from waste_management_models import Session
@@ -116,6 +119,39 @@ class AdminDashboard(QWidget):
 
         main_layout.addWidget(self.stack, 1)
 
+        # Admin Page 4: Send Points to Volunteers
+        page_points = QWidget()
+        layout_points = QVBoxLayout(page_points)
+        card_points = QFrame()
+        card_points.setObjectName("adminCard")
+        p_layout = QVBoxLayout(card_points)
+
+        p_title = QLabel("Award Points to Volunteers")
+        p_title.setObjectName("pageHeading")
+
+        lbl_select_vol = QLabel("Select Volunteer:")
+        self.combo_volunteers = QComboBox() 
+        lbl_points_input = QLabel("Points to Award:")
+        self.spin_points = QSpinBox()    
+        self.spin_points.setRange(1, 10000)
+        self.spin_points.setValue(50)
+
+        btn_send_points = QPushButton("Send Points")
+        btn_send_points.setObjectName("primaryButton")
+        btn_send_points.clicked.connect(self.handle_send_points)
+
+        p_layout.addWidget(p_title)
+        p_layout.addWidget(lbl_select_vol)
+        p_layout.addWidget(self.combo_volunteers)
+        p_layout.addWidget(lbl_points_input)
+        p_layout.addWidget(self.spin_points)
+        p_layout.addWidget(btn_send_points)
+        p_layout.addStretch()
+        layout_points.addWidget(card_points)
+
+        # Add to stack (index 3)
+        self.stack.addWidget(page_points)
+
         # --- CIRCULAR ADMIN NAVIGATION BAR ---
         nav_frame = QFrame()
         nav_frame.setObjectName("navBarFrame")
@@ -125,11 +161,13 @@ class AdminDashboard(QWidget):
         self.btn_a_tasks = QPushButton("Create\nTask")
         self.btn_a_notif = QPushButton("Send\nNotif")
         self.btn_a_reports = QPushButton("Review\nReports")
+        self.btn_a_points = QPushButton("Send\nPoints") 
 
         self.admin_nav_buttons = [
             (self.btn_a_tasks, 0),
             (self.btn_a_notif, 1),
-            (self.btn_a_reports, 2)
+            (self.btn_a_reports, 2),
+            (self.btn_a_points, 3)
         ]
 
         nav_layout.addStretch()
@@ -148,8 +186,8 @@ class AdminDashboard(QWidget):
         self.stack.setCurrentIndex(index)
         if index == 2:
             self.refresh_admin_reports()
-
-        # Update QSS properties and refresh style dynamically
+        elif index == 3:
+            self.refresh_volunteer_dropdown()
         for btn, idx in self.admin_nav_buttons:
             is_active = "true" if idx == index else "false"
             btn.setProperty("active", is_active)
@@ -179,6 +217,28 @@ class AdminDashboard(QWidget):
         self.txt_n_body.clear()
         QMessageBox.information(self, "Success", "Notification broadcasted to all volunteers!")
 
+    def refresh_volunteer_dropdown(self):
+        from data_manager import load_accounts
+        self.combo_volunteers.clear()
+        accounts = load_accounts()
+        for acc in accounts:
+            if acc.role == "Volunteer":
+                self.combo_volunteers.addItem(f"{acc.full_name} ({acc.username})", acc.username)
+
+    def handle_send_points(self):
+        from data_manager import award_volunteer_points
+        username = self.combo_volunteers.currentData()
+        if not username:
+            QMessageBox.warning(self, "Selection Error", "No volunteer selected.")
+            return
+
+        points = self.spin_points.value()
+        success, message = award_volunteer_points(username, points)
+
+        if success:
+            QMessageBox.information(self, "Success", message)
+        else:
+            QMessageBox.warning(self, "Error",  message)
     def refresh_admin_reports(self):
         self.admin_reports_list.clear()
         for r in DataStore.waste_reports:
@@ -190,3 +250,5 @@ class AdminDashboard(QWidget):
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()
+
+

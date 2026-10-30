@@ -70,3 +70,13 @@ and badge system.
 profile information.
 - Improved volunteer account management and prepared the system for future enhancements, 
 including persistent report history, identity verification, and a fully functional achievements and rewards system.
+
+
+Progress 4: Admin Pointing Distributions and Viewing of Points - URBANO
+- Added a new feature to the volunteer dashboard for viewing the volunteer's available points.
+- Added a new feature to the admin dashboard that allows administrators to distribute 
+    points to volunteers.
+- Administrators can select a volunteer's username before assigning points.
+- Updated the Rewards section to display the volunteer's total points at the top.
+- To be added: Level multipliers and reward costs.
+- The progress is not yet final.
