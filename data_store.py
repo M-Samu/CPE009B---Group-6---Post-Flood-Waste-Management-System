@@ -7,34 +7,16 @@ DATASTORE_FILE = Path("data") / "datastore.json"
 # PERSISTENT IN-MEMORY & JSON DATA STORE
 # ==============================================================================
 class DataStore:
-    tasks = [
-        "Task: Barangay 182 Flood Debris Pickup",
-        "Task: Segregate Plastics at Riverbank",
-        "Task: Submit Weekly Waste Report",
-        "Task: Attend Community Orientation"
-    ]
-
-    announcements = [
-        ("Safety Advisory: Wear Protective Gear", "Ensure rubber boots and heavy-duty gloves are worn during river debris collection."),
-        ("Schedule Update: Barangay 182 Cleanup", "The cleanup drive start time is moved to 8:00 AM due to morning rain."),
-        ("Community Milestone Reached!", "Over 1,000 kg of post-flood waste has been collected across all active districts!")
-    ]
-
-    waste_reports = [
-        "District 3 - High Debris Concentration (Pending Review)",
-        "Main Bridge Area - Blocked Water Drain (In Progress)",
-        "Riverside Park - Organic Waste Accumulated (Cleared)"
-    ]
-
-    cleanup_drives = [
-        {"id": 1, "name": "Barangay Clean-Up Drive Alpha", "datetime": "Saturday, 8:00 AM", "location": "Central Plaza", "joined": False},
-        {"id": 2, "name": "Post-Typhoon Coastal Clearing", "datetime": "Sunday, 7:00 AM", "location": "Coastal Road", "joined": False},
-        {"id": 3, "name": "Riverbank Plastic Segregation", "datetime": "Next Wednesday, 1:00 PM", "location": "River Spillway", "joined": False}
-    ]
+    tasks = []
+    announcements = []
+    waste_reports = []
+    cleanup_drives = []
 
     report_records = []
     reward_claims = []
     cleared_announcements = {}  # Format: { "username": ["heading1|||body1", ...] }
+    user_joined_tasks = []      # Format: [ { "username": "...", "task_title": "...", "completed": bool }, ... ]
+    cleared_tasks = {}          # Format: { "username": ["task_title1", ...] }
 
     @classmethod
     def load(cls):
@@ -56,6 +38,10 @@ class DataStore:
                     cls.reward_claims = data["reward_claims"]
                 if "cleared_announcements" in data:
                     cls.cleared_announcements = data["cleared_announcements"]
+                if "user_joined_tasks" in data:
+                    cls.user_joined_tasks = data["user_joined_tasks"]
+                if "cleared_tasks" in data:
+                    cls.cleared_tasks = data["cleared_tasks"]
             except Exception as error:
                 print(f"Error loading persistent data store: {error}")
 
@@ -70,7 +56,9 @@ class DataStore:
             "cleanup_drives": cls.cleanup_drives,
             "report_records": cls.report_records,
             "reward_claims": cls.reward_claims,
-            "cleared_announcements": cls.cleared_announcements
+            "cleared_announcements": cls.cleared_announcements,
+            "user_joined_tasks": getattr(cls, "user_joined_tasks", []),
+            "cleared_tasks": getattr(cls, "cleared_tasks", {})
         }
         DATASTORE_FILE.write_text(json.dumps(data, indent=4), encoding="utf-8")
 

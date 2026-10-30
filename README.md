@@ -72,13 +72,14 @@ profile information.
 including persistent report history, identity verification, and a fully functional achievements and rewards system.
 
 
-Progress 4: Points distribution from admins (Urbano)
-- added a new function on volunteer dashboard for viewing of points available
--added new function for admins, to give/distribute points
-- admins may select the username of the volunteer
-- for the rewards class, the total points can be seen at the top.
-- To add: levels multipliers and reward costs
-- note: this is not yet final
+Progress 4: Admin Pointing Distributions and Viewing of Points - URBANO
+- Added a new feature to the volunteer dashboard for viewing the volunteer's available points.
+- Added a new feature to the admin dashboard that allows administrators to distribute 
+    points to volunteers.
+- Administrators can select a volunteer's username before assigning points.
+- Updated the Rewards section to display the volunteer's total points at the top.
+- To be added: Level multipliers and reward costs.
+- The progress is not yet final.
 
 
 Progress 5: Points System Integration, Reward Redemption, and System Enhancements – MAPAS, RAMOS
@@ -92,3 +93,17 @@ Progress 5: Points System Integration, Reward Redemption, and System Enhancement
     program is closed and reopened.
 - Reduced the number of available reward items temporarily for testing purposes.
 - Added the ability for administrators to delete tasks and waste reports.
+
+
+Progress 6: Application Icon, Cleanup Drive Scheduling, Task Management, and Progress Tracking – MAPAS, RAMOS, URBANO
+- Added application icon files and updated main.py to set the application window icon.
+- Added a Cleanup Schedules section to the Admin Dashboard, allowing administrators to create, publish, view, 
+    and delete cleanup drive schedules.
+- Improved volunteer task management by adding the Join Task, Mark as Done, and Clear Completed Task functions.
+- Added task participation and completion records, including timestamps, to the persistent data store.
+- Updated the circular progress indicator to calculate the percentage of completed tasks instead of displaying 
+    a fixed percentage.
+- Connected cleanup drive participation to the volunteer task list so that joining a cleanup drive automatically 
+    adds its corresponding task.
+- Added styling for selected list items to improve text readability and selection appearance.
+- Extended data_store.py to save and load volunteer task participation and cleared-task records.

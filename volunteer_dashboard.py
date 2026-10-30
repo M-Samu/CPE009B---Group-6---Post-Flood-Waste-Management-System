@@ -24,11 +24,16 @@ from data_store import DataStore
 # Custom Blue Progress Gauge
 # ==============================================================================
 class CircularProgressWidget(QWidget):
-    def __init__(self, value=75, max_value=100, parent=None):
+    def __init__(self, value=0, max_value=100, parent=None):
         super().__init__(parent)
         self.value = value
-        self.max_value = max_value
+        self.max_value = max_value if max_value > 0 else 1
         self.setMinimumSize(170, 170)
+
+    def set_value(self, value, max_value=100):
+        self.value = value
+        self.max_value = max_value if max_value > 0 else 1
+        self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -48,13 +53,19 @@ class CircularProgressWidget(QWidget):
         progress_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(progress_pen)
 
-        angle = int(360 * (self.value / self.max_value) * 16)
+        ratio = min(max(self.value / self.max_value, 0.0), 1.0)
+        angle = int(360 * ratio * 16)
         painter.drawArc(rect, 90 * 16, -angle)
 
         painter.setPen(QColor("#1e293b"))
-        font = QFont("Segoe UI", 18, QFont.Weight.Bold)
+        font = QFont("Segoe UI", 16, QFont.Weight.Bold)
         painter.setFont(font)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, f"{self.value}%\nTarget Met")
+        pct = int(ratio * 100)
+        painter.drawText(
+            rect,
+            Qt.AlignmentFlag.AlignCenter,
+            f"{pct}%\nCompleted\n({self.value}/{self.max_value})"
+        )
 
 
 # ==============================================================================
@@ -80,10 +91,22 @@ class VolunteerOverviewPage(QWidget):
         task_layout = QVBoxLayout(self.task_card)
         task_layout.setContentsMargins(20, 20, 20, 20)
 
+        # Header Row with Date and "Clear Completed Task" Button
+        task_header_layout = QHBoxLayout()
         today_str = datetime.now().strftime("%B %d, %Y")
         date_label = QLabel(today_str)
         date_label.setObjectName("cardDateLabel")
-        task_layout.addWidget(date_label)
+
+        btn_clear_completed = QPushButton("Clear Completed Task")
+        btn_clear_completed.setObjectName("secondaryButton")
+        btn_clear_completed.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_clear_completed.clicked.connect(self.clear_completed_tasks)
+
+        task_header_layout.addWidget(date_label)
+        task_header_layout.addStretch()
+        task_header_layout.addWidget(btn_clear_completed)
+
+        task_layout.addLayout(task_header_layout)
 
         self.tasks_container = QVBoxLayout()
         self.tasks_container.setSpacing(10)
@@ -97,14 +120,14 @@ class VolunteerOverviewPage(QWidget):
         graphic_layout = QVBoxLayout(graphic_card)
         graphic_layout.setContentsMargins(20, 20, 20, 20)
 
-        self.ring_chart = CircularProgressWidget(75, 100)
+        self.ring_chart = CircularProgressWidget(0, 100)
         graphic_layout.addWidget(self.ring_chart, 0, Qt.AlignmentFlag.AlignCenter)
 
         tint_box = QFrame()
         tint_box.setObjectName("tintedInfoBox")
         tint_layout = QVBoxLayout(tint_box)
 
-        impact_desc = QLabel("Community Target\nPost-Flood Cleanup")
+        impact_desc = QLabel("Completed Task Progress")
         impact_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         impact_desc.setObjectName("tintedBoxText")
         tint_layout.addWidget(impact_desc)
@@ -116,7 +139,8 @@ class VolunteerOverviewPage(QWidget):
 
     def refresh_data(self):
         account = Session.current_account
-        user_name = account.full_name if account else "Samuel Ramos"
+        username = account.username if account else ""
+        user_name = account.full_name if account else "Volunteer"
         self.welcome_label.setText(f"Welcome, {user_name}")
 
         while self.tasks_container.count():
@@ -124,21 +148,168 @@ class VolunteerOverviewPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        for task in DataStore.tasks:
-            t_row = QHBoxLayout()
-            check_icon = QLabel("✔")
-            check_icon.setObjectName("taskCheckBadge")
+        if not hasattr(DataStore, "user_joined_tasks"):
+            DataStore.user_joined_tasks = []
 
-            t_text = QLabel(task)
+        if not hasattr(DataStore, "cleared_tasks"):
+            DataStore.cleared_tasks = {}
+
+        user_cleared_list = DataStore.cleared_tasks.get(username, [])
+
+        visible_tasks = [
+            (idx, task_text) for idx, task_text in enumerate(DataStore.tasks)
+            if task_text not in user_cleared_list
+        ]
+
+        total_tasks = len(visible_tasks)
+        completed_count = 0
+
+        for idx, task_text in visible_tasks:
+            t_row = QHBoxLayout()
+
+            t_text = QLabel(task_text)
             t_text.setObjectName("taskItemText")
             t_text.setWordWrap(True)
 
-            t_row.addWidget(check_icon)
-            t_row.addWidget(t_text, 1) 
-            
+            joined_record = next(
+                (
+                    j for j in DataStore.user_joined_tasks
+                    if j.get("username") == username and (j.get("task_title") == task_text or j.get("task_id") == idx)
+                ),
+                None
+            )
+
+            t_row.addWidget(t_text, 1)
+
+            if joined_record is None:
+                btn_action = QPushButton("Join Task")
+                btn_action.setObjectName("primaryButton")
+                btn_action.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn_action.clicked.connect(lambda _, task_idx=idx, t_title=task_text: self.join_task(task_idx, t_title))
+                t_row.addWidget(btn_action)
+
+            elif not joined_record.get("completed", False):
+                btn_action = QPushButton("Mark as Done")
+                btn_action.setObjectName("primaryButton")
+                btn_action.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn_action.clicked.connect(lambda _, record=joined_record: self.mark_task_completed(record))
+                t_row.addWidget(btn_action)
+
+            else:
+                completed_count += 1
+                lbl_done = QLabel("Completed")
+                lbl_done.setStyleSheet("color: #16a34a; font-weight: bold; font-size: 13px;")
+                t_row.addWidget(lbl_done)
+
             row_widget = QWidget()
             row_widget.setLayout(t_row)
             self.tasks_container.addWidget(row_widget)
+
+        self.ring_chart.set_value(completed_count, max_value=max(total_tasks, 1))
+
+    def join_task(self, task_idx: int, task_title: str):
+        account = Session.current_account
+        if not account:
+            QMessageBox.warning(self, "Login Required", "Please log in to join tasks.")
+            return
+
+        if not hasattr(DataStore, "user_joined_tasks"):
+            DataStore.user_joined_tasks = []
+
+        DataStore.user_joined_tasks.append({
+            "username": account.username,
+            "task_id": task_idx,
+            "task_title": task_title,
+            "joined_at": current_datetime(),
+            "completed": False
+        })
+
+        try:
+            DataStore.save()
+            QMessageBox.information(
+                self, "Task Joined",
+                "You joined this task! Mark it as done once you finish to update your progress."
+            )
+        except Exception as error:
+            QMessageBox.critical(self, "Save Error", f"Could not join task:\n{error}")
+
+        self.refresh_data()
+
+    def mark_task_completed(self, record: dict):
+        reply = QMessageBox.question(
+            self,
+            "Confirm Completion",
+            "Have you finished working on this task?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        record["completed"] = True
+        record["completed_at"] = current_datetime()
+
+        try:
+            DataStore.save()
+            QMessageBox.information(self, "Task Completed", "Great job! Task marked as done.")
+        except Exception as error:
+            record["completed"] = False
+            QMessageBox.critical(self, "Save Error", f"Could not update task status:\n{error}")
+
+        self.refresh_data()
+
+    def clear_completed_tasks(self):
+        """Clears completed tasks for the current logged-in volunteer (hides them for this account only)."""
+        account = Session.current_account
+        if not account:
+            return
+
+        username = account.username
+        if not hasattr(DataStore, "user_joined_tasks"):
+            DataStore.user_joined_tasks = []
+
+        if not hasattr(DataStore, "cleared_tasks"):
+            DataStore.cleared_tasks = {}
+
+        # Find task titles completed by current user
+        completed_task_titles = []
+        for record in DataStore.user_joined_tasks:
+            if record.get("username") == username and record.get("completed", False):
+                title = record.get("task_title")
+                if not title and 0 <= record.get("task_id", -1) < len(DataStore.tasks):
+                    title = DataStore.tasks[record["task_id"]]
+                if title and title not in completed_task_titles:
+                    completed_task_titles.append(title)
+
+        if not completed_task_titles:
+            QMessageBox.information(self, "Clear Tasks", "There are no completed tasks to clear.")
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Confirm Clear",
+            "Are you sure you want to clear your completed tasks from your view?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        if username not in DataStore.cleared_tasks:
+            DataStore.cleared_tasks[username] = []
+
+        for title in completed_task_titles:
+            if title not in DataStore.cleared_tasks[username]:
+                DataStore.cleared_tasks[username].append(title)
+
+        try:
+            DataStore.save()
+            QMessageBox.information(self, "Success", "Completed tasks cleared from your account!")
+        except Exception as error:
+            QMessageBox.critical(self, "Save Error", f"Could not clear completed tasks:\n{error}")
+
+        self.refresh_data()
 
 
 # ==============================================================================
@@ -279,7 +450,7 @@ class VolunteerWasteReportsPage(QWidget):
 
 
 # ==============================================================================
-# Screen 3: Scheduled Cleanup Drives
+# Screen 3: Scheduled Cleanup Drives (Auto-Adds Task to Volunteer Task List)
 # ==============================================================================
 class VolunteerScheduledDrivesPage(QWidget):
     def __init__(self, parent=None):
@@ -307,37 +478,78 @@ class VolunteerScheduledDrivesPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
+        account = Session.current_account
+        username = account.username if account else ""
+
         for drive in DataStore.cleanup_drives:
             drive_box = QFrame()
             drive_box.setObjectName("driveItemBox")
             i_layout = QHBoxLayout(drive_box)
 
             info_v = QVBoxLayout()
-            lbl_name = QLabel(drive["name"])
+            lbl_name = QLabel(drive.get("name", ""))
             lbl_name.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
-            lbl_meta = QLabel(f"Date: {drive['datetime']} | Location: {drive['location']}")
+            lbl_meta = QLabel(f"Date: {drive.get('datetime', '')} | Location: {drive.get('location', '')}")
             lbl_meta.setStyleSheet("color: #64748b; font-size: 12px; border: none;")
             info_v.addWidget(lbl_name)
             info_v.addWidget(lbl_meta)
 
-            btn_join = QPushButton("Joined" if drive["joined"] else "Join Drive")
-            btn_join.setEnabled(not drive["joined"])
+            joined_users = drive.get("joined_users", [])
+            is_joined = username in joined_users if username else False
+
+            btn_join = QPushButton("Joined" if is_joined else "Join Drive")
+            btn_join.setEnabled(not is_joined)
             btn_join.setCursor(Qt.CursorShape.PointingHandCursor)
             btn_join.setObjectName("primaryButton")
              
             def make_join_handler(d=drive):
                 def handler():
-                    account = Session.current_account
-                    if account is None or not account.valid_id_path or not Path(account.valid_id_path).is_file():
+                    acc = Session.current_account
+                    if acc is None or not acc.valid_id_path or not Path(acc.valid_id_path).is_file():
                         QMessageBox.warning(
                             self, "Valid ID Required",
                             "Please upload a valid ID in your profile before joining a cleanup drive."
                         )
                         return
 
-                    d["joined"] = True
+                    if "joined_users" not in d or not isinstance(d["joined_users"], list):
+                        d["joined_users"] = []
+
+                    if acc.username not in d["joined_users"]:
+                        d["joined_users"].append(acc.username)
+
+                    if "joined" in d:
+                        del d["joined"]
+
+                    task_title = f"Task: {d['name']} ({d['datetime']} @ {d['location']})"
+                    
+                    if task_title not in DataStore.tasks:
+                        DataStore.tasks.append(task_title)
+                    
+                    task_idx = DataStore.tasks.index(task_title)
+
+                    if not hasattr(DataStore, "user_joined_tasks"):
+                        DataStore.user_joined_tasks = []
+
+                    already_joined = any(
+                        j.get("username") == acc.username and (j.get("task_title") == task_title or j.get("task_id") == task_idx)
+                        for j in DataStore.user_joined_tasks
+                    )
+
+                    if not already_joined:
+                        DataStore.user_joined_tasks.append({
+                            "username": acc.username,
+                            "task_id": task_idx,
+                            "task_title": task_title,
+                            "joined_at": current_datetime(),
+                            "completed": False
+                        })
+
                     DataStore.save()
-                    QMessageBox.information(self, "Cleanup Drive", f"You joined '{d['name']}'!")
+                    QMessageBox.information(
+                        self, "Cleanup Drive Joined",
+                        f"You joined '{d['name']}'!\n\nThis schedule has been automatically added to your Task list on the Home Overview page."
+                    )
                     self.refresh_data()
 
                 return handler
@@ -540,7 +752,6 @@ class VolunteerAnnouncementsPage(QWidget):
         header_layout.addWidget(self.btn_clear_all)
         self.card_layout.addLayout(header_layout)
 
-        # Scrollable Notifications Feed Container
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -566,7 +777,6 @@ class VolunteerAnnouncementsPage(QWidget):
         account = Session.current_account
         username = account.username if account else ""
         
-        # Retrieve user-specific cleared notifications
         cleared_keys = DataStore.cleared_announcements.get(username, [])
 
         visible_announcements = []

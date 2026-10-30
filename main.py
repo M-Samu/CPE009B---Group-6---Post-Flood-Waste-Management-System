@@ -1,12 +1,14 @@
 import sys
 from PyQt6.QtWidgets import QApplication
 from pathlib import Path
+from PyQt6.QtGui import QIcon
 
 from data_manager import initialize_storage
 from data_store import DataStore
 from login_window import LoginWindow
 
 def main():
+
     # 1. Initialize data directory & default admin account
     initialize_storage()
 
@@ -15,6 +17,8 @@ def main():
 
     # 3. Create Qt Application instance
     app = QApplication(sys.argv)
+
+    app.setWindowIcon(QIcon("icon.ico"))
 
     # 4. Apply QSS Stylesheet if present
     style_path = Path(__file__).resolve().parent / "style.qss"

@@ -297,6 +297,12 @@ QListWidget::item:hover {
     background-color: #f1f5f9;
 }
 
+QListWidget::item:selected {
+    background-color: #dbeafe;
+    color: #0f172a;
+    border: 1px solid #93c5fd;
+}
+
 QLabel#versionLabel {
     color: #64748b;
     font-size: 11px;

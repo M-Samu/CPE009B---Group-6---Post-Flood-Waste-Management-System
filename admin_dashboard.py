@@ -14,7 +14,7 @@ class AdminDashboard(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Admin Dashboard | Post-Flood Waste Management")
-        self.resize(850, 650)
+        self.resize(850, 680)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(15, 15, 15, 15)
@@ -71,7 +71,7 @@ class AdminDashboard(QWidget):
 
         lbl_n_heading = QLabel("Announcement Title:")
         self.txt_n_heading = QLineEdit()
-        self.txt_n_heading.setPlaceholderText("e.g.Emergency Flood Advisory")
+        self.txt_n_heading.setPlaceholderText("e.g. 📢 Emergency Flood Advisory")
 
         lbl_n_body = QLabel("Announcement Body:")
         self.txt_n_body = QTextEdit()
@@ -210,33 +210,87 @@ class AdminDashboard(QWidget):
 
         layout_claims.addWidget(card_claims)
 
+        # Page 5: Create Cleanup Schedule (NEW)
+        page_schedules = QWidget()
+        layout_schedules = QVBoxLayout(page_schedules)
+        card_schedules = QFrame()
+        card_schedules.setObjectName("adminCard")
+        s_layout = QVBoxLayout(card_schedules)
+
+        s_title = QLabel("Create Cleanup Drive Schedule")
+        s_title.setObjectName("pageHeading")
+
+        lbl_drive_name = QLabel("Cleanup Drive Name:")
+        self.txt_drive_name = QLineEdit()
+        self.txt_drive_name.setPlaceholderText("e.g. Barangay 182 Flood Debris Clearing")
+
+        lbl_drive_datetime = QLabel("Date & Time:")
+        self.txt_drive_datetime = QLineEdit()
+        self.txt_drive_datetime.setPlaceholderText("e.g. Saturday, 8:00 AM")
+
+        lbl_drive_location = QLabel("Location / Venue:")
+        self.txt_drive_location = QLineEdit()
+        self.txt_drive_location.setPlaceholderText("e.g. Central Plaza Spillway")
+
+        btn_add_schedule = QPushButton("Publish Cleanup Drive Schedule")
+        btn_add_schedule.setObjectName("primaryButton")
+        btn_add_schedule.clicked.connect(self.handle_add_schedule)
+
+        s_layout.addWidget(s_title)
+        s_layout.addWidget(lbl_drive_name)
+        s_layout.addWidget(self.txt_drive_name)
+        s_layout.addWidget(lbl_drive_datetime)
+        s_layout.addWidget(self.txt_drive_datetime)
+        s_layout.addWidget(lbl_drive_location)
+        s_layout.addWidget(self.txt_drive_location)
+        s_layout.addWidget(btn_add_schedule)
+
+        lbl_existing_schedules = QLabel("Existing Cleanup Schedules:")
+        lbl_existing_schedules.setStyleSheet("font-weight: bold; margin-top: 10px; color: #1e293b;")
+        self.list_schedules = QListWidget()
+        self.list_schedules.setObjectName("announcementList")
+        self.list_schedules.setFixedHeight(110)
+
+        btn_delete_schedule = QPushButton("Delete Selected Schedule")
+        btn_delete_schedule.setObjectName("secondaryButton")
+        btn_delete_schedule.clicked.connect(self.handle_delete_schedule)
+
+        s_layout.addWidget(lbl_existing_schedules)
+        s_layout.addWidget(self.list_schedules)
+        s_layout.addWidget(btn_delete_schedule)
+
+        layout_schedules.addWidget(card_schedules)
+
         # Add pages to stack
-        self.stack.addWidget(page_tasks)   # 0
-        self.stack.addWidget(page_notif)   # 1
-        self.stack.addWidget(page_reports) # 2
-        self.stack.addWidget(page_points)  # 3
-        self.stack.addWidget(page_claims)  # 4
+        self.stack.addWidget(page_tasks)      # 0
+        self.stack.addWidget(page_notif)      # 1
+        self.stack.addWidget(page_reports)    # 2
+        self.stack.addWidget(page_points)     # 3
+        self.stack.addWidget(page_claims)     # 4
+        self.stack.addWidget(page_schedules)  # 5
 
         main_layout.addWidget(self.stack, 1)
 
-        # Circular Admin Nav Bar
+        # Capsule Admin Nav Bar (Matching Volunteer Styling)
         nav_frame = QFrame()
-        nav_frame.setObjectName("navBarFrame")
+        nav_frame.setObjectName("bottomNavFrame")
         nav_layout = QHBoxLayout(nav_frame)
-        nav_layout.setContentsMargins(15, 10, 15, 10)
+        nav_layout.setContentsMargins(15, 8, 15, 8)
 
         self.btn_a_tasks = QPushButton("Create\nTask")
         self.btn_a_notif = QPushButton("Send\nNotif")
         self.btn_a_reports = QPushButton("Review\nReports")
         self.btn_a_points = QPushButton("Send\nPoints") 
         self.btn_a_claims = QPushButton("Reward\nClaims")
+        self.btn_a_schedules = QPushButton("Cleanup\nSchedules")
 
         self.admin_nav_buttons = [
             (self.btn_a_tasks, 0),
             (self.btn_a_notif, 1),
             (self.btn_a_reports, 2),
             (self.btn_a_points, 3),
-            (self.btn_a_claims, 4)
+            (self.btn_a_claims, 4),
+            (self.btn_a_schedules, 5)
         ]
 
         nav_layout.addStretch()
@@ -258,6 +312,8 @@ class AdminDashboard(QWidget):
             self.refresh_volunteer_dropdown()
         elif index == 4:
             self.refresh_reward_claims_list()
+        elif index == 5:
+            self.refresh_schedules_list()
 
         for btn, idx in self.admin_nav_buttons:
             is_active = "true" if idx == index else "false"
@@ -410,6 +466,60 @@ class AdminDashboard(QWidget):
             DataStore.save()
             self.refresh_admin_reports()
             QMessageBox.information(self, "Success", "Waste report deleted successfully.")
+
+    def handle_add_schedule(self):
+        """Creates and publishes a new Cleanup Drive Schedule."""
+        name = self.txt_drive_name.text().strip()
+        dt = self.txt_drive_datetime.text().strip()
+        loc = self.txt_drive_location.text().strip()
+
+        if not name or not dt or not loc:
+            QMessageBox.warning(self, "Input Error", "Please fill in all schedule details (Name, Date/Time, Location).")
+            return
+
+        new_id = len(DataStore.cleanup_drives) + 1
+        DataStore.cleanup_drives.append({
+            "id": new_id,
+            "name": name,
+            "datetime": dt,
+            "location": loc,
+            "joined": False
+        })
+
+        DataStore.save()
+        self.txt_drive_name.clear()
+        self.txt_drive_datetime.clear()
+        self.txt_drive_location.clear()
+
+        self.refresh_schedules_list()
+        QMessageBox.information(self, "Success", f"Cleanup drive '{name}' scheduled and published to volunteers!")
+
+    def refresh_schedules_list(self):
+        """Refreshes the list of scheduled cleanup drives."""
+        self.list_schedules.clear()
+        for drive in DataStore.cleanup_drives:
+            self.list_schedules.addItem(
+                f"ID #{drive.get('id', '')} | {drive.get('name', '')} | Date: {drive.get('datetime', '')} | Location: {drive.get('location', '')}"
+            )
+
+    def handle_delete_schedule(self):
+        """Deletes selected cleanup drive schedule."""
+        row = self.list_schedules.currentRow()
+        if row < 0 or row >= len(DataStore.cleanup_drives):
+            QMessageBox.warning(self, "Selection Error", "Please select a cleanup drive schedule to delete.")
+            return
+
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            "Are you sure you want to delete this cleanup drive schedule?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            DataStore.cleanup_drives.pop(row)
+            DataStore.save()
+            self.refresh_schedules_list()
+            QMessageBox.information(self, "Success", "Cleanup drive schedule deleted successfully.")
 
     def refresh_admin_reports(self):
         self.admin_reports_list.clear()

@@ -1,48 +1,113 @@
 {
     "tasks": [
-        "Task: Barangay 182 Flood Debris Pickup",
-        "Task: Segregate Plastics at Riverbank",
-        "Task: Submit Weekly Waste Report",
-        "Task: Attend Community Orientation"
+        "Task: Testing (8pm @ Biringan)",
+        "Task: ssss (aaaa @ sssss)",
+        "Task: fddddd",
+        "Task: sss",
+        "Task: tetsing111111 (ssss @ qqq)"
     ],
-    "announcements": [
-        [
-            "notifivhs",
-            "wdqwwfweff"
-        ]
-    ],
-    "waste_reports": [
-        "District 3 - High Debris Concentration (Pending Review)",
-        "Main Bridge Area - Blocked Water Drain (In Progress)"
-    ],
-    "cleanup_drives": [
-        {
-            "id": 1,
-            "name": "Barangay Clean-Up Drive Alpha",
-            "datetime": "Saturday, 8:00 AM",
-            "location": "Central Plaza",
-            "joined": false
-        },
-        {
-            "id": 2,
-            "name": "Post-Typhoon Coastal Clearing",
-            "datetime": "Sunday, 7:00 AM",
-            "location": "Coastal Road",
-            "joined": false
-        },
-        {
-            "id": 3,
-            "name": "Riverbank Plastic Segregation",
-            "datetime": "Next Wednesday, 1:00 PM",
-            "location": "River Spillway",
-            "joined": false
-        }
-    ],
+    "announcements": [],
+    "waste_reports": [],
+    "cleanup_drives": [],
     "report_records": [],
     "reward_claims": [],
-    "cleared_announcements": {
-        "sam": [
-            "notifivhs|||wdqwwfweff"
+    "cleared_announcements": {},
+    "user_joined_tasks": [
+        {
+            "username": "vinceau",
+            "task_id": 0,
+            "task_title": "Task: Testing (8pm @ Biringan)",
+            "joined_at": "2026-10-25 22:03:17",
+            "completed": true,
+            "completed_at": "2026-10-25 22:04:52"
+        },
+        {
+            "username": "vinceau",
+            "task_id": 1,
+            "task_title": "Task: ssss (aaaa @ sssss)",
+            "joined_at": "2026-10-25 22:03:18",
+            "completed": true,
+            "completed_at": "2026-10-25 22:04:54"
+        },
+        {
+            "username": "dustin",
+            "task_id": 0,
+            "task_title": "Task: Testing (8pm @ Biringan)",
+            "joined_at": "2026-10-25 22:04:31",
+            "completed": true,
+            "completed_at": "2026-10-25 22:04:34"
+        },
+        {
+            "username": "dustin",
+            "task_id": 1,
+            "task_title": "Task: ssss (aaaa @ sssss)",
+            "joined_at": "2026-10-25 22:05:13",
+            "completed": true,
+            "completed_at": "2026-10-25 22:05:15"
+        },
+        {
+            "username": "dustin",
+            "task_id": 4,
+            "task_title": "Task: tetsing111111 (ssss @ qqq)",
+            "joined_at": "2026-10-25 22:06:38",
+            "completed": true,
+            "completed_at": "2026-10-25 22:06:42"
+        },
+        {
+            "username": "dustin",
+            "task_id": 3,
+            "task_title": "Task: sss",
+            "joined_at": "2026-10-25 22:06:43",
+            "completed": true,
+            "completed_at": "2026-10-25 22:06:48"
+        },
+        {
+            "username": "dustin",
+            "task_id": 2,
+            "task_title": "Task: fddddd",
+            "joined_at": "2026-10-25 22:06:44",
+            "completed": true,
+            "completed_at": "2026-10-25 22:06:46"
+        },
+        {
+            "username": "vinceau",
+            "task_id": 4,
+            "task_title": "Task: tetsing111111 (ssss @ qqq)",
+            "joined_at": "2026-10-25 22:07:05",
+            "completed": true,
+            "completed_at": "2026-10-25 22:07:36"
+        },
+        {
+            "username": "vinceau",
+            "task_id": 3,
+            "task_title": "Task: sss",
+            "joined_at": "2026-10-25 22:07:38",
+            "completed": true,
+            "completed_at": "2026-10-25 22:07:39"
+        },
+        {
+            "username": "vinceau",
+            "task_id": 2,
+            "task_title": "Task: fddddd",
+            "joined_at": "2026-10-25 22:07:41",
+            "completed": true,
+            "completed_at": "2026-10-25 22:07:43"
+        }
+    ],
+    "cleared_tasks": {
+        "vinceau": [
+            "Task: Testing (8pm @ Biringan)",
+            "Task: ssss (aaaa @ sssss)",
+            "Task: tetsing111111 (ssss @ qqq)",
+            "Task: sss",
+            "Task: fddddd"
+        ],
+        "dustin": [
+            "Task: Testing (8pm @ Biringan)",
+            "Task: ssss (aaaa @ sssss)",
+            "Task: tetsing111111 (ssss @ qqq)",
+            "Task: sss",
+            "Task: fddddd"
         ]
     }
 }
