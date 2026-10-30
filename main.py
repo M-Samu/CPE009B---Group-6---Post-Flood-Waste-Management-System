@@ -5,7 +5,6 @@ from pathlib import Path
 from data_manager import initialize_storage
 from login_window import LoginWindow
 
-
 def main():
     # 1. Initialize data directory & default admin account
     initialize_storage()
@@ -24,7 +23,6 @@ def main():
 
     # 5. Start main event loop
     sys.exit(app.exec())
-
 
 if __name__ == "__main__":
     main()

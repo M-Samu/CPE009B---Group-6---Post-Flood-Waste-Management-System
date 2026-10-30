@@ -19,7 +19,8 @@ Progress 1: Core System Setup, Login and Registration System, and Role-Based Das
 - Created the basic system structure using PyQt6.
 - Added login and registration features.
 - Added password security and input validation.
-- Created separate admin and volunteer dashboards.
+- Created separate admin and volunteer dashboard windows as 
+    the initial interfaces for future features.
 - Added login and logout functionality.
 - Applied a consistent user interface design.
 - Prepared the system for future waste management features.
@@ -45,3 +46,27 @@ Progress 2: Dashboard Development, Volunteer and Admin Features - MAPAS, RAMOS, 
     system and redemption process still need further improvements.
 - Continued improving the dashboard design and functionality 
     in preparation for the next development phase.
+
+
+Progress 3: Volunteer Profile and Account Management Features - ASAJAR
+
+- Added a View Profile section where volunteers can view their personal 
+and demographic information.
+- Added an Edit Profile feature for updating personal details, contact information, 
+and emergency contact information.
+- Implemented profile picture uploading and saving to the system.
+- Added a Valid ID Upload feature to allow volunteers to submit an identification 
+document for future identity verification.
+- Added a Gallery feature for viewing images uploaded with waste reports.
+- Developed a Recent Posts feature for viewing previously submitted waste reports, 
+including available images, descriptions, locations, and submission dates.
+- Added a Delete Account feature that requires password confirmation to prevent 
+accidental account deletion.
+- Implemented a Change Password feature that verifies the current password before 
+saving a new password securely.
+- Added an Achievements section as a placeholder for the future volunteer points 
+and badge system.
+- Updated the account model and account-saving functionality to support additional 
+profile information.
+- Improved volunteer account management and prepared the system for future enhancements, 
+including persistent report history, identity verification, and a fully functional achievements and rewards system.

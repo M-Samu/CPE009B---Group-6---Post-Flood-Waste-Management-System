@@ -28,3 +28,6 @@ class DataStore:
         {"id": 2, "name": "Post-Typhoon Coastal Clearing", "datetime": "Sunday, 7:00 AM", "location": "Coastal Road", "joined": False},
         {"id": 3, "name": "Riverbank Plastic Segregation", "datetime": "Next Wednesday, 1:00 PM", "location": "River Spillway", "joined": False}
     ]
+
+    # Structured report records for volunteer profiles and galleries.
+    report_records = []

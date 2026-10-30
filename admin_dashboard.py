@@ -8,10 +8,7 @@ from PyQt6.QtWidgets import (
 from waste_management_models import Session
 from data_store import DataStore
 
-
-# ==============================================================================
 # MAIN ADMIN DASHBOARD CLASS
-# ==============================================================================
 class AdminDashboard(QWidget):
     def __init__(self):
         super().__init__()
