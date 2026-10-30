@@ -1,0 +1,115 @@
+
+QWidget {
+    background-color: #f1f5f9;
+    color: #1e293b;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+}
+
+QLabel#appTitle {
+    color: #2563eb;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+QLabel#appSubtitle {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+QLabel#pageHeading {
+    color: #1e293b;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+QLabel#mutedText {
+    color: #64748b;
+    font-size: 12px;
+}
+
+QLineEdit {
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    padding: 12px;
+    min-height: 18px;
+    color: #1e293b;
+    selection-background-color: #2563eb;
+}
+
+QLineEdit:hover {
+    border-color: #93c5fd;
+}
+
+QLineEdit:focus {
+    border: 2px solid #2563eb;
+}
+
+QCheckBox {
+    spacing: 8px;
+    color: #334155;
+}
+
+QCheckBox:hover {
+    color: #2563eb;
+}
+
+QPushButton {
+    border: none;
+    border-radius: 9px;
+    padding: 11px 14px;
+    font-weight: 600;
+}
+
+QPushButton#primaryButton {
+    background-color: #2563eb;
+    color: white;
+}
+
+QPushButton#primaryButton:hover {
+    background-color: #1d4ed8;
+}
+
+QPushButton#primaryButton:pressed {
+    background-color: #1e40af;
+}
+
+QPushButton#secondaryButton {
+    background-color: #e2e8f0;
+    color: #334155;
+}
+
+QPushButton#secondaryButton:hover {
+    background-color: #cbd5e1;
+}
+
+QPushButton#linkButton {
+    background: transparent;
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+QLabel#statusLabel {
+    color: #64748b;
+    min-height: 20px;
+}
+
+QLabel#statusLabel[state="error"] {
+    color: #dc2626;
+}
+
+QLabel#statusLabel[state="success"] {
+    color: #16a34a;
+}
+
+QLabel#dashboardInfo {
+    background: white;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 22px;
+}
