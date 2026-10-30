@@ -1,6 +1,3 @@
-from email import message
-from operator import index
-
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
@@ -11,12 +8,13 @@ from PyQt6.QtWidgets import (
 from waste_management_models import Session
 from data_store import DataStore
 
+
 # MAIN ADMIN DASHBOARD CLASS
 class AdminDashboard(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Admin Dashboard | Post-Flood Waste Management")
-        self.resize(800, 620)
+        self.resize(850, 650)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(15, 15, 15, 15)
@@ -35,10 +33,9 @@ class AdminDashboard(QWidget):
         top_bar.addWidget(btn_logout)
         main_layout.addLayout(top_bar)
 
-        # Stacked Admin Control Pages
         self.stack = QStackedWidget()
 
-        # Admin Page 1: Create Task
+        # Page 0: Create Task
         page_tasks = QWidget()
         layout_tasks = QVBoxLayout(page_tasks)
         card_tasks = QFrame()
@@ -47,7 +44,6 @@ class AdminDashboard(QWidget):
 
         t_title = QLabel("Create Volunteer Task")
         t_title.setObjectName("pageHeading")
-        
         lbl_task_input = QLabel("Task Description / Assignment:")
         self.txt_task_desc = QLineEdit()
         self.txt_task_desc.setPlaceholderText("e.g. Segregate plastic waste at District 2")
@@ -63,7 +59,7 @@ class AdminDashboard(QWidget):
         t_layout.addStretch()
         layout_tasks.addWidget(card_tasks)
 
-        # Admin Page 2: Send Notifications
+        # Page 1: Send Notifications
         page_notif = QWidget()
         layout_notif = QVBoxLayout(page_notif)
         card_notif = QFrame()
@@ -75,7 +71,7 @@ class AdminDashboard(QWidget):
 
         lbl_n_heading = QLabel("Announcement Title:")
         self.txt_n_heading = QLineEdit()
-        self.txt_n_heading.setPlaceholderText("e.g. 📢 Emergency Flood Advisory")
+        self.txt_n_heading.setPlaceholderText("e.g.Emergency Flood Advisory")
 
         lbl_n_body = QLabel("Announcement Body:")
         self.txt_n_body = QTextEdit()
@@ -92,7 +88,7 @@ class AdminDashboard(QWidget):
         n_layout.addWidget(btn_send_notif)
         layout_notif.addWidget(card_notif)
 
-        # Admin Page 3: Review Waste Reports
+        # Page 2: Review & Delete Waste Reports
         page_reports = QWidget()
         layout_reports = QVBoxLayout(page_reports)
         card_rep = QFrame()
@@ -104,22 +100,24 @@ class AdminDashboard(QWidget):
         self.admin_reports_list = QListWidget()
         self.admin_reports_list.setObjectName("announcementList")
 
+        btn_row_rep = QHBoxLayout()
         btn_refresh_rep = QPushButton("Refresh Reports List")
         btn_refresh_rep.setObjectName("secondaryButton")
         btn_refresh_rep.clicked.connect(self.refresh_admin_reports)
 
+        btn_delete_rep = QPushButton("Delete Selected Report")
+        btn_delete_rep.setObjectName("secondaryButton")
+        btn_delete_rep.clicked.connect(self.handle_delete_report)
+
+        btn_row_rep.addWidget(btn_refresh_rep)
+        btn_row_rep.addWidget(btn_delete_rep)
+
         r_layout.addWidget(r_title)
         r_layout.addWidget(self.admin_reports_list)
-        r_layout.addWidget(btn_refresh_rep)
+        r_layout.addLayout(btn_row_rep)
         layout_reports.addWidget(card_rep)
 
-        self.stack.addWidget(page_tasks)    # 0
-        self.stack.addWidget(page_notif)    # 1
-        self.stack.addWidget(page_reports)  # 2
-
-        main_layout.addWidget(self.stack, 1)
-
-        # Admin Page 4: Send Points to Volunteers
+        # Page 3: Send Points to Volunteers
         page_points = QWidget()
         layout_points = QVBoxLayout(page_points)
         card_points = QFrame()
@@ -149,10 +147,79 @@ class AdminDashboard(QWidget):
         p_layout.addStretch()
         layout_points.addWidget(card_points)
 
-        # Add to stack (index 3)
-        self.stack.addWidget(page_points)
+        # Page 4: Manage & Delete Reward Release & District Pickup
+        page_claims = QWidget()
+        layout_claims = QVBoxLayout(page_claims)
+        card_claims = QFrame()
+        card_claims.setObjectName("adminCard")
+        c_layout = QVBoxLayout(card_claims)
 
-        # --- CIRCULAR ADMIN NAVIGATION BAR ---
+        c_title = QLabel("Manage Reward Releases & District Pickup")
+        c_title.setObjectName("pageHeading")
+
+        lbl_select_claim = QLabel("Select Volunteer Reward Claim:")
+        self.list_claims = QListWidget()
+        self.list_claims.setObjectName("announcementList")
+        self.list_claims.setFixedHeight(120)
+        self.list_claims.currentRowChanged.connect(self.on_claim_selected)
+
+        lbl_office = QLabel("Assign Nearest District Office for Pick-up:")
+        self.combo_district_office = QComboBox()
+        self.combo_district_office.addItems([
+            "District 1 Office (Central Plaza)",
+            "District 2 Branch (River Spillway Hub)",
+            "District 3 Office (Main Bridge Command)",
+            "Barangay 182 Hall Pickup Center"
+        ])
+
+        lbl_pickup_notes = QLabel("Pick-up Instructions & Schedule:")
+        self.txt_pickup_notes = QLineEdit()
+        self.txt_pickup_notes.setPlaceholderText("e.g. Ready for pickup Mon-Fri, 9 AM - 4 PM. Present ID.")
+
+        lbl_claim_status = QLabel("Update Release Status:")
+        self.combo_claim_status = QComboBox()
+        self.combo_claim_status.addItems([
+            "Ready for Pick-up",
+            "Released / Picked Up",
+            "Processing Release",
+            "Cancelled / Out of Stock"
+        ])
+
+        btn_claim_row = QHBoxLayout()
+        btn_update_claim = QPushButton("Update Status & Notify Volunteer")
+        btn_update_claim.setObjectName("primaryButton")
+        btn_update_claim.clicked.connect(self.handle_update_claim_status)
+
+        btn_delete_claim = QPushButton("Delete Reward Claim")
+        btn_delete_claim.setObjectName("secondaryButton")
+        btn_delete_claim.clicked.connect(self.handle_delete_claim)
+
+        btn_claim_row.addWidget(btn_update_claim, 2)
+        btn_claim_row.addWidget(btn_delete_claim, 1)
+
+        c_layout.addWidget(c_title)
+        c_layout.addWidget(lbl_select_claim)
+        c_layout.addWidget(self.list_claims)
+        c_layout.addWidget(lbl_office)
+        c_layout.addWidget(self.combo_district_office)
+        c_layout.addWidget(lbl_pickup_notes)
+        c_layout.addWidget(self.txt_pickup_notes)
+        c_layout.addWidget(lbl_claim_status)
+        c_layout.addWidget(self.combo_claim_status)
+        c_layout.addLayout(btn_claim_row)
+
+        layout_claims.addWidget(card_claims)
+
+        # Add pages to stack
+        self.stack.addWidget(page_tasks)   # 0
+        self.stack.addWidget(page_notif)   # 1
+        self.stack.addWidget(page_reports) # 2
+        self.stack.addWidget(page_points)  # 3
+        self.stack.addWidget(page_claims)  # 4
+
+        main_layout.addWidget(self.stack, 1)
+
+        # Circular Admin Nav Bar
         nav_frame = QFrame()
         nav_frame.setObjectName("navBarFrame")
         nav_layout = QHBoxLayout(nav_frame)
@@ -162,18 +229,19 @@ class AdminDashboard(QWidget):
         self.btn_a_notif = QPushButton("Send\nNotif")
         self.btn_a_reports = QPushButton("Review\nReports")
         self.btn_a_points = QPushButton("Send\nPoints") 
+        self.btn_a_claims = QPushButton("Reward\nClaims")
 
         self.admin_nav_buttons = [
             (self.btn_a_tasks, 0),
             (self.btn_a_notif, 1),
             (self.btn_a_reports, 2),
-            (self.btn_a_points, 3)
+            (self.btn_a_points, 3),
+            (self.btn_a_claims, 4)
         ]
 
         nav_layout.addStretch()
         for btn, idx in self.admin_nav_buttons:
-            btn.setObjectName("navCircleButton")
-            btn.setFixedSize(68, 68)
+            btn.setObjectName("capsuleNavBtn")
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.clicked.connect(lambda _, i=idx: self.switch_admin_tab(i))
             nav_layout.addWidget(btn)
@@ -188,6 +256,9 @@ class AdminDashboard(QWidget):
             self.refresh_admin_reports()
         elif index == 3:
             self.refresh_volunteer_dropdown()
+        elif index == 4:
+            self.refresh_reward_claims_list()
+
         for btn, idx in self.admin_nav_buttons:
             is_active = "true" if idx == index else "false"
             btn.setProperty("active", is_active)
@@ -201,6 +272,7 @@ class AdminDashboard(QWidget):
             return
         
         DataStore.tasks.append(f"Task: {task_text}")
+        DataStore.save()
         self.txt_task_desc.clear()
         QMessageBox.information(self, "Success", "Task successfully assigned to volunteers!")
 
@@ -213,6 +285,7 @@ class AdminDashboard(QWidget):
             return
 
         DataStore.announcements.insert(0, (title, body))
+        DataStore.save()
         self.txt_n_heading.clear()
         self.txt_n_body.clear()
         QMessageBox.information(self, "Success", "Notification broadcasted to all volunteers!")
@@ -238,7 +311,106 @@ class AdminDashboard(QWidget):
         if success:
             QMessageBox.information(self, "Success", message)
         else:
-            QMessageBox.warning(self, "Error",  message)
+            QMessageBox.warning(self, "Error", message)
+
+    def refresh_reward_claims_list(self):
+        self.list_claims.clear()
+        claims = getattr(DataStore, "reward_claims", [])
+        if not claims:
+            self.list_claims.addItem("No reward claims submitted yet.")
+            return
+
+        for claim in claims:
+            display_str = (
+                f"ID #{claim['id']} | Volunteer: {claim['full_name']} ({claim['username']}) "
+                f"| Item: {claim['item_name']} | Status: {claim['status']}"
+            )
+            self.list_claims.addItem(display_str)
+
+    def on_claim_selected(self, row: int):
+        claims = getattr(DataStore, "reward_claims", [])
+        if 0 <= row < len(claims):
+            selected = claims[row]
+            notes = selected.get("pickup_info", "")
+            if notes and "Awaiting" not in notes:
+                self.txt_pickup_notes.setText(notes)
+
+    def handle_update_claim_status(self):
+        row = self.list_claims.currentRow()
+        claims = getattr(DataStore, "reward_claims", [])
+
+        if row < 0 or row >= len(claims):
+            QMessageBox.warning(self, "Selection Error", "Please select a reward claim from the list.")
+            return
+
+        claim = claims[row]
+        district_office = self.combo_district_office.currentText()
+        notes = self.txt_pickup_notes.text().strip()
+        status = self.combo_claim_status.currentText()
+
+        full_pickup_info = f"{district_office}. {notes}" if notes else district_office
+
+        claim["status"] = status
+        claim["pickup_info"] = full_pickup_info
+
+        notif_title = f"🎁 Reward Update: {claim['item_name']}"
+        notif_body = (
+            f"Hello {claim['full_name']}! Your reward claim for '{claim['item_name']}' is now [{status}].\n"
+            f"Pickup Location: {district_office}\n"
+            f"Instructions: {notes if notes else 'Present your Volunteer ID upon pickup.'}"
+        )
+        DataStore.announcements.insert(0, (notif_title, notif_body))
+
+        DataStore.save()
+        self.refresh_reward_claims_list()
+
+        QMessageBox.information(
+            self, "Claim Updated",
+            f"Successfully updated release status to '{status}' and sent a notification to {claim['full_name']}!"
+        )
+
+    def handle_delete_claim(self):
+        """Deletes selected reward claim."""
+        row = self.list_claims.currentRow()
+        claims = getattr(DataStore, "reward_claims", [])
+
+        if row < 0 or row >= len(claims):
+            QMessageBox.warning(self, "Selection Error", "Please select a reward claim to delete.")
+            return
+
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            "Are you sure you want to delete this reward claim?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            claims.pop(row)
+            DataStore.save()
+            self.refresh_reward_claims_list()
+            QMessageBox.information(self, "Success", "Reward claim deleted successfully.")
+
+    def handle_delete_report(self):
+        """Deletes selected waste report."""
+        row = self.admin_reports_list.currentRow()
+        if row < 0 or row >= len(DataStore.waste_reports):
+            QMessageBox.warning(self, "Selection Error", "Please select a waste report to delete.")
+            return
+
+        reply = QMessageBox.question(
+            self, "Confirm Delete",
+            "Are you sure you want to delete this waste report?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            del DataStore.waste_reports[row]
+            if hasattr(DataStore, "report_records") and row < len(DataStore.report_records):
+                del DataStore.report_records[row]
+            DataStore.save()
+            self.refresh_admin_reports()
+            QMessageBox.information(self, "Success", "Waste report deleted successfully.")
+
     def refresh_admin_reports(self):
         self.admin_reports_list.clear()
         for r in DataStore.waste_reports:
@@ -250,5 +422,3 @@ class AdminDashboard(QWidget):
         self.login_window = LoginWindow()
         self.login_window.show()
         self.close()
-
-

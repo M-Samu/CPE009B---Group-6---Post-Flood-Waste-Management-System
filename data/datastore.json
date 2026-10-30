@@ -1,0 +1,48 @@
+{
+    "tasks": [
+        "Task: Barangay 182 Flood Debris Pickup",
+        "Task: Segregate Plastics at Riverbank",
+        "Task: Submit Weekly Waste Report",
+        "Task: Attend Community Orientation"
+    ],
+    "announcements": [
+        [
+            "notifivhs",
+            "wdqwwfweff"
+        ]
+    ],
+    "waste_reports": [
+        "District 3 - High Debris Concentration (Pending Review)",
+        "Main Bridge Area - Blocked Water Drain (In Progress)"
+    ],
+    "cleanup_drives": [
+        {
+            "id": 1,
+            "name": "Barangay Clean-Up Drive Alpha",
+            "datetime": "Saturday, 8:00 AM",
+            "location": "Central Plaza",
+            "joined": false
+        },
+        {
+            "id": 2,
+            "name": "Post-Typhoon Coastal Clearing",
+            "datetime": "Sunday, 7:00 AM",
+            "location": "Coastal Road",
+            "joined": false
+        },
+        {
+            "id": 3,
+            "name": "Riverbank Plastic Segregation",
+            "datetime": "Next Wednesday, 1:00 PM",
+            "location": "River Spillway",
+            "joined": false
+        }
+    ],
+    "report_records": [],
+    "reward_claims": [],
+    "cleared_announcements": {
+        "sam": [
+            "notifivhs|||wdqwwfweff"
+        ]
+    }
+}

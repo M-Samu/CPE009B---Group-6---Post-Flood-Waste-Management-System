@@ -72,11 +72,23 @@ profile information.
 including persistent report history, identity verification, and a fully functional achievements and rewards system.
 
 
-Progress 4: Admin Pointing Distributions and Viewing of Points - URBANO
-- Added a new feature to the volunteer dashboard for viewing the volunteer's available points.
-- Added a new feature to the admin dashboard that allows administrators to distribute 
-    points to volunteers.
-- Administrators can select a volunteer's username before assigning points.
-- Updated the Rewards section to display the volunteer's total points at the top.
-- To be added: Level multipliers and reward costs.
-- The progress is not yet final.
+Progress 4: Points distribution from admins (Urbano)
+- added a new function on volunteer dashboard for viewing of points available
+-added new function for admins, to give/distribute points
+- admins may select the username of the volunteer
+- for the rewards class, the total points can be seen at the top.
+- To add: levels multipliers and reward costs
+- note: this is not yet final
+
+
+Progress 5: Points System Integration, Reward Redemption, and System Enhancements – MAPAS, RAMOS
+- Updated the admin dashboard buttons to match the design and style of the volunteer dashboard.
+- Added the ability for administrators to update the status of redeemed items and delete 
+    redemption records.
+- Added a notification-clearing feature that removes notifications only for the account that 
+    clears them, keeping each user's notification data separate.
+- Implemented automatic point deduction when a volunteer redeems a reward.
+- Added data persistence so user information and application data are retained when the 
+    program is closed and reopened.
+- Reduced the number of available reward items temporarily for testing purposes.
+- Added the ability for administrators to delete tasks and waste reports.
