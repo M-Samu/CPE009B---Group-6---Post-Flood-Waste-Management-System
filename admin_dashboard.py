@@ -1,4 +1,6 @@
 from pathlib import Path
+from datetime import datetime
+import uuid
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -9,11 +11,12 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QStackedWidget, QFrame, QListWidget, QListWidgetItem,
     QLineEdit, QTextEdit, QMessageBox, QComboBox, QSpinBox,
-    QSplitter, QScrollArea, QDialog
+    QSplitter, QScrollArea, QDialog, QTabWidget, QAbstractItemView
 )
 
 from waste_management_models import Session
 from data_store import DataStore
+from data_manager import award_volunteer_points
 
 def _load_smtp_settings():
     """
@@ -58,7 +61,7 @@ class EmailAnnouncementThread(QThread):
             self.finished_signal.emit(
                 False,
                 "Announcement saved in the app, but email settings are missing. "
-                "Create a .env file beside admin_dashboard_refactored.py with "
+                "Create a .env file beside admin_dashboard.py with "
                 "SMTP_LOGIN=your-gmail-address and SMTP_PASSWORD=your-gmail-app-password, "
                 "or set those environment variables before launching the app."
             )
@@ -168,78 +171,283 @@ class AdminCreateTaskPage(QWidget):
         )
 
 class AdminNotificationsPage(QWidget):
+    """Create email/dashboard announcements and manage previously sent notifications."""
     def __init__(self, parent=None):
         super().__init__(parent)
-        layout_notif = QVBoxLayout(self)
+        layout = QVBoxLayout(self)
+        self.tabs = QTabWidget()
 
-        card_notif = QFrame()
-        card_notif.setObjectName("adminCard")
-        n_layout = QVBoxLayout(card_notif)
-
-        n_title = QLabel("Send Notification / Announcement")
-        n_title.setObjectName("pageHeading")
-
+        send_page = QWidget()
+        send_layout = QVBoxLayout(send_page)
+        card = QFrame()
+        card.setObjectName("adminCard")
+        card_layout = QVBoxLayout(card)
+        heading = QLabel("Send Notification / Announcement")
+        heading.setObjectName("pageHeading")
         self.txt_n_heading = QLineEdit()
-        self.txt_n_heading.setPlaceholderText(
-            "e.g. Emergency Flood Advisory"
-        )
-
+        self.txt_n_heading.setPlaceholderText("e.g. Emergency Flood Advisory")
         self.txt_n_body = QTextEdit()
-        self.txt_n_body.setPlaceholderText(
-            "Enter the announcement details..."
-        )
-
-        self.btn_send_notif = QPushButton(
-            "Send Notification to All Volunteers"
-        )
+        self.txt_n_body.setPlaceholderText("Enter the announcement details...")
+        self.btn_send_notif = QPushButton("Send Notification to All Volunteers")
         self.btn_send_notif.setObjectName("primaryButton")
-        self.btn_send_notif.clicked.connect(
-            self.handle_send_notification
+        self.btn_send_notif.clicked.connect(self.handle_send_notification)
+        card_layout.addWidget(heading)
+        card_layout.addWidget(QLabel("Announcement Title:"))
+        card_layout.addWidget(self.txt_n_heading)
+        card_layout.addWidget(QLabel("Announcement Body:"))
+        card_layout.addWidget(self.txt_n_body)
+        card_layout.addWidget(self.btn_send_notif)
+        send_layout.addWidget(card)
+        send_layout.addStretch(1)
+
+        manage_page = QWidget()
+        manage_layout = QVBoxLayout(manage_page)
+        header = QHBoxLayout()
+        manage_title = QLabel("My Notifications")
+        manage_title.setObjectName("pageHeading")
+        refresh_button = QPushButton("Refresh")
+        refresh_button.clicked.connect(self.refresh_my_notifications)
+        header.addWidget(manage_title)
+        header.addStretch()
+        header.addWidget(refresh_button)
+        manage_layout.addLayout(header)
+        manage_layout.addWidget(QLabel(
+            "Edit or delete saved dashboard notifications. Changes cannot retract emails already delivered."
+        ))
+        self.my_notifications_list = QListWidget()
+        self.my_notifications_list.setObjectName("adminListWidget")
+        manage_layout.addWidget(self.my_notifications_list, 1)
+
+        self.tabs.addTab(send_page, "Send Notification")
+        self.tabs.addTab(manage_page, "My Notifications")
+        self.tabs.currentChanged.connect(
+            lambda index: self.refresh_my_notifications() if index == 1 else None
         )
+        layout.addWidget(self.tabs)
+        self.refresh_my_notifications()
 
-        n_layout.addWidget(n_title)
-        n_layout.addWidget(QLabel("Announcement Title:"))
-        n_layout.addWidget(self.txt_n_heading)
-        n_layout.addWidget(QLabel("Announcement Body:"))
-        n_layout.addWidget(self.txt_n_body)
-        n_layout.addWidget(self.btn_send_notif)
-
-        layout_notif.addWidget(card_notif)
+    def _current_admin_username(self):
+        account = Session.current_account
+        return str(getattr(account, "username", "admin")) if account else "admin"
 
     def handle_send_notification(self):
         title = self.txt_n_heading.text().strip()
         body = self.txt_n_body.toPlainText().strip()
-
         if not title or not body:
             QMessageBox.warning(self, "Input Error", "Please fill in both title and body.")
             return
 
-        announcement = (title, body)
-        DataStore.announcements.insert(0, announcement)
+        from data_manager import load_accounts
+        accounts = load_accounts()
+        recipients = sorted({
+            str(getattr(account, "username", "")).strip()
+            for account in accounts
+            if getattr(account, "role", "") == "Volunteer"
+            and str(getattr(account, "username", "")).strip()
+        })
+        if not recipients:
+            QMessageBox.warning(self, "No Recipients", "No volunteer accounts were found.")
+            return
+
+        record = {
+            "id": uuid.uuid4().hex,
+            "title": title,
+            "body": body,
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "created_by": self._current_admin_username(),
+            "recipients": recipients,
+            "type": "admin_announcement",
+        }
+        DataStore.notification_records.insert(0, record)
         try:
             DataStore.save()
         except Exception as error:
-            DataStore.announcements.remove(announcement)
-            QMessageBox.critical(self, "Save Error", f"Could not save the announcement.\n{error}")
+            DataStore.notification_records.remove(record)
+            QMessageBox.critical(self, "Save Error", f"Could not save the notification.\n{error}")
             return
 
         self.txt_n_heading.clear()
         self.txt_n_body.clear()
         self.btn_send_notif.setEnabled(False)
         self.btn_send_notif.setText("Sending Email...")
-
+        self.refresh_my_notifications()
         self.email_thread = EmailAnnouncementThread(title, body, self)
         self.email_thread.finished_signal.connect(self._on_announcement_emails_sent)
         self.email_thread.start()
 
     def _on_announcement_emails_sent(self, success, message):
-        if getattr(self, "btn_send_notif", None) is not None:
-            self.btn_send_notif.setEnabled(True)
-            self.btn_send_notif.setText("Send Notification to All Volunteers")
+        self.btn_send_notif.setEnabled(True)
+        self.btn_send_notif.setText("Send Notification to All Volunteers")
         if success:
             QMessageBox.information(self, "Email Announcement", message)
         else:
-            QMessageBox.warning(self, "Email Announcement", message)
+            QMessageBox.warning(
+                self, "Email Announcement",
+                message + "\n\nThe notification is saved in the dashboard even if email delivery failed."
+            )
+
+    def refresh_my_notifications(self):
+        if not hasattr(self, "my_notifications_list"):
+            return
+        self.my_notifications_list.clear()
+        username = self._current_admin_username()
+        entries = []
+        for record in DataStore.notification_records:
+            if (isinstance(record, dict)
+                    and record.get("type") == "admin_announcement"
+                    and str(record.get("created_by", "admin")).casefold() == username.casefold()):
+                entries.append(("record", record))
+        # Existing releases stored notifications as tuples. Keep them manageable too.
+        for old_item in DataStore.announcements:
+            if isinstance(old_item, (list, tuple)) and len(old_item) >= 2:
+                entries.append(("legacy", (str(old_item[0]), str(old_item[1]))))
+
+        for entry_type, payload in entries:
+            if entry_type == "record":
+                title = str(payload.get("title", "Untitled notification"))
+                body = str(payload.get("body", ""))
+                key = payload.get("id")
+                date_text = str(payload.get("created_at", ""))
+            else:
+                title, body = payload
+                key = ("legacy", title, body)
+                date_text = "Previously saved notification"
+
+            item = QListWidgetItem()
+            card = QWidget()
+            card_layout = QVBoxLayout(card)
+            card_layout.setContentsMargins(8, 8, 8, 8)
+            title_label = QLabel(title)
+            title_label.setStyleSheet("font-weight: bold;")
+            preview = QLabel(body[:160] + ("..." if len(body) > 160 else ""))
+            preview.setWordWrap(True)
+            date_label = QLabel(date_text)
+            date_label.setStyleSheet("color: #64748b; font-size: 11px;")
+            buttons = QHBoxLayout()
+            edit_button = QPushButton("Edit")
+            delete_button = QPushButton("Delete")
+            edit_button.clicked.connect(lambda checked=False, k=key: self.edit_notification(k))
+            delete_button.clicked.connect(lambda checked=False, k=key: self.delete_notification(k))
+            buttons.addWidget(edit_button)
+            buttons.addWidget(delete_button)
+            buttons.addStretch()
+            card_layout.addWidget(title_label)
+            card_layout.addWidget(preview)
+            card_layout.addWidget(date_label)
+            card_layout.addLayout(buttons)
+            item.setSizeHint(card.sizeHint())
+            self.my_notifications_list.addItem(item)
+            self.my_notifications_list.setItemWidget(item, card)
+
+        if not entries:
+            self.my_notifications_list.addItem("You have not sent any notifications yet.")
+
+    def edit_notification(self, notification_id):
+        is_legacy = isinstance(notification_id, tuple) and notification_id and notification_id[0] == "legacy"
+        if is_legacy:
+            old_title, old_body = notification_id[1], notification_id[2]
+            record = None
+        else:
+            old_title = old_body = ""
+            record = next(
+                (item for item in DataStore.notification_records
+                 if isinstance(item, dict) and item.get("id") == notification_id),
+                None
+            )
+            if record is None:
+                QMessageBox.warning(self, "Not Found", "This notification no longer exists.")
+                self.refresh_my_notifications()
+                return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Edit Notification")
+        dialog.resize(500, 400)
+        layout = QVBoxLayout(dialog)
+        title_input = QLineEdit(old_title if is_legacy else str(record.get("title", "")))
+        body_input = QTextEdit()
+        body_input.setPlainText(old_body if is_legacy else str(record.get("body", "")))
+        layout.addWidget(QLabel("Notification title"))
+        layout.addWidget(title_input)
+        layout.addWidget(QLabel("Notification body"))
+        layout.addWidget(body_input, 1)
+        buttons = QHBoxLayout()
+        save_button = QPushButton("Save Changes")
+        cancel_button = QPushButton("Cancel")
+        save_button.clicked.connect(dialog.accept)
+        cancel_button.clicked.connect(dialog.reject)
+        buttons.addWidget(save_button)
+        buttons.addWidget(cancel_button)
+        layout.addLayout(buttons)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        title = title_input.text().strip()
+        body = body_input.toPlainText().strip()
+        if not title or not body:
+            QMessageBox.warning(self, "Input Error", "Title and body cannot be empty.")
+            return
+
+        if is_legacy:
+            old_pair = (old_title, old_body)
+            try:
+                index = DataStore.announcements.index(old_pair)
+            except ValueError:
+                QMessageBox.warning(self, "Not Found", "This notification no longer exists.")
+                self.refresh_my_notifications()
+                return
+            DataStore.announcements[index] = (title, body)
+            rollback = lambda: DataStore.announcements.__setitem__(index, old_pair)
+        else:
+            old_record = dict(record)
+            record["title"], record["body"] = title, body
+            record["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            rollback = lambda: (record.clear(), record.update(old_record))
+        try:
+            DataStore.save()
+        except Exception as error:
+            rollback()
+            QMessageBox.critical(self, "Save Error", f"Could not update notification.\n{error}")
+            return
+
+        self.refresh_my_notifications()
+        QMessageBox.information(
+            self, "Notification Updated",
+            "The dashboard notification was updated. Emails already delivered cannot be changed."
+        )
+
+    def delete_notification(self, notification_id):
+        is_legacy = isinstance(notification_id, tuple) and notification_id and notification_id[0] == "legacy"
+        if is_legacy:
+            record = (notification_id[1], notification_id[2])
+            target_list = DataStore.announcements
+        else:
+            record = next(
+                (item for item in DataStore.notification_records
+                 if isinstance(item, dict) and item.get("id") == notification_id),
+                None
+            )
+            target_list = DataStore.notification_records
+        if record is None or record not in target_list:
+            self.refresh_my_notifications()
+            return
+
+        reply = QMessageBox.question(
+            self, "Delete Notification",
+            "Delete this notification from recipients' dashboard history? Previously delivered emails will remain in their inboxes.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        index = target_list.index(record)
+        target_list.remove(record)
+        try:
+            DataStore.save()
+        except Exception as error:
+            target_list.insert(index, record)
+            QMessageBox.critical(self, "Save Error", f"Could not delete notification.\n{error}")
+            return
+        self.refresh_my_notifications()
 
 class AdminWasteReportsPage(QWidget):
     def __init__(self, parent=None):
@@ -345,6 +553,10 @@ class AdminWasteReportsPage(QWidget):
 
         moderation_buttons.addWidget(self.btn_approve_report)
         moderation_buttons.addWidget(self.btn_reject_report)
+        self.btn_award_report_points = QPushButton("Award 10 Points")
+        self.btn_award_report_points.setObjectName("primaryButton")
+        self.btn_award_report_points.clicked.connect(self.handle_award_report_points)
+        moderation_buttons.addWidget(self.btn_award_report_points)
         report_detail_layout.addLayout(moderation_buttons)
 
         report_buttons = QHBoxLayout()
@@ -469,6 +681,7 @@ class AdminWasteReportsPage(QWidget):
         has_selection = True
         self.btn_approve_report.setEnabled(has_selection)
         self.btn_reject_report.setEnabled(has_selection)
+        self.btn_award_report_points.setEnabled(has_selection and moderation.get("status") == "Approved" and not moderation.get("points_awarded", False))
 
     def show_report_image(self, image_path):
         self.lbl_report_image.clear()
@@ -524,6 +737,8 @@ class AdminWasteReportsPage(QWidget):
         self.lbl_report_image.setText("No image selected.")
         self.btn_approve_report.setEnabled(False)
         self.btn_reject_report.setEnabled(False)
+        if hasattr(self, "btn_award_report_points"):
+            self.btn_award_report_points.setEnabled(False)
 
     def handle_moderate_report(self, status):
         index = self.selected_report_index
@@ -560,6 +775,34 @@ class AdminWasteReportsPage(QWidget):
             "Report Updated",
             f"The report has been marked as {status}."
         )
+
+    def handle_award_report_points(self):
+        index = self.selected_report_index
+        if index is None or not 0 <= index < len(DataStore.waste_reports):
+            QMessageBox.warning(self, "Selection Error", "Select a report first.")
+            return
+        moderation = DataStore.get_report_moderation(index) or {}
+        if moderation.get("status") != "Approved":
+            QMessageBox.warning(self, "Report Not Verified", "Approve the waste report before awarding points.")
+            return
+        if moderation.get("points_awarded", False):
+            QMessageBox.information(self, "Already Awarded", "Points have already been awarded for this report.")
+            return
+        record = DataStore.report_records[index] if index < len(DataStore.report_records) else {}
+        username = record.get("username", "") if isinstance(record, dict) else ""
+        if not username:
+            QMessageBox.warning(self, "Missing User", "The report does not identify its volunteer.")
+            return
+        answer = QMessageBox.question(self, "Award Points", f"Award 10 points to @{username} for this verified waste report?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        ok, message = award_volunteer_points(username, 10)
+        if not ok:
+            QMessageBox.warning(self, "Points Not Awarded", message)
+            return
+        moderation["points_awarded"] = True
+        DataStore.save()
+        QMessageBox.information(self, "Points Awarded", message)
 
     def handle_delete_report(self):
         index = self.selected_report_index
@@ -1024,25 +1267,85 @@ class AdminManageUsersPage(QWidget):
 
     def get_selected_volunteer_records(self):
         """
-        Get report records submitted by the selected volunteer.
-
-        This uses the same DataStore.report_records collection
-        used by the existing Admin waste-report review page.
+        Return waste reports and clean-up drive reports submitted by the
+        selected volunteer. These are the same saved records used by the
+        Review Reports and Public Feed pages.
         """
-        username = self.selected_username
-
+        username = str(self.selected_username or "").strip()
         if not username:
             return []
 
-        records = getattr(DataStore, "report_records", [])
+        records = []
 
-        return [
-            record
-            for record in records
-            if isinstance(record, dict)
-            and str(record.get("username", "")).casefold()
-            == username.casefold()
-        ]
+        # Waste reports use report_records, with moderation stored separately
+        # by matching report index.
+        waste_records = getattr(DataStore, "report_records", [])
+        try:
+            DataStore._synchronize_report_moderation()
+        except (AttributeError, TypeError):
+            pass
+
+        for index, record in enumerate(waste_records):
+            if not isinstance(record, dict):
+                continue
+            if str(record.get("username", "")).strip().casefold() != username.casefold():
+                continue
+
+            post = dict(record)
+            post["post_type"] = "Waste Report"
+            post["report_type"] = record.get("report_type", "Waste Report")
+            post["_source"] = "waste"
+            post["_source_index"] = index
+
+            try:
+                moderation = DataStore.get_report_moderation(index) or {}
+            except (AttributeError, IndexError, TypeError):
+                moderation = {}
+
+            post["moderation_status"] = moderation.get("status", "Pending")
+            post["admin_note"] = moderation.get("admin_note", "")
+            records.append(post)
+
+        # Clean-up drive reports are stored in a separate collection and have
+        # their own moderation entries. Include them in the same profile view.
+        cleanup_records = getattr(DataStore, "cleanup_drive_reports", [])
+        try:
+            DataStore._synchronize_cleanup_drive_report_moderation()
+        except (AttributeError, TypeError):
+            pass
+
+        cleanup_moderation = getattr(
+            DataStore, "cleanup_drive_report_moderation", []
+        )
+
+        for index, record in enumerate(cleanup_records):
+            if not isinstance(record, dict):
+                continue
+            if str(record.get("username", "")).strip().casefold() != username.casefold():
+                continue
+
+            post = dict(record)
+            post["post_type"] = "Clean-up Drive Report"
+            post["report_type"] = record.get("drive_name", "Clean-up Drive Report")
+            post["_source"] = "cleanup"
+            post["_source_index"] = index
+
+            moderation = (
+                cleanup_moderation[index]
+                if index < len(cleanup_moderation)
+                and isinstance(cleanup_moderation[index], dict)
+                else {}
+            )
+            post["moderation_status"] = moderation.get("status", "Pending")
+            post["admin_note"] = moderation.get("admin_note", "")
+            post.setdefault("location", record.get("location", ""))
+            records.append(post)
+
+        records.sort(
+            key=lambda record: str(record.get("submitted_at", "")),
+            reverse=True,
+        )
+        return records
 
     def show_selected_volunteer_gallery(self):
         if not self.selected_username:
@@ -1133,7 +1436,7 @@ class AdminManageUsersPage(QWidget):
 
             report_type = record.get(
                 "report_type",
-                "Waste Report"
+                record.get("post_type", "Waste Report")
             )
 
             post_heading = QLabel(str(report_type))
@@ -1143,7 +1446,22 @@ class AdminManageUsersPage(QWidget):
             post_heading.setWordWrap(True)
             card_layout.addWidget(post_heading)
 
-            location = record.get("location", "Not provided")
+            post_type = record.get("post_type", "Waste Report")
+            if not images_only:
+                type_label = QLabel(f"Post Type: {post_type}")
+                type_label.setWordWrap(True)
+                card_layout.addWidget(type_label)
+
+                status = record.get("moderation_status", "")
+                if status:
+                    status_label = QLabel(f"Review Status: {status}")
+                    status_label.setWordWrap(True)
+                    card_layout.addWidget(status_label)
+
+            location = record.get("location") or record.get("drive_location") or "Not provided"
+            if record.get("drive_name") and post_type == "Clean-up Drive Report":
+                location = record.get("location") or "See clean-up drive schedule"
+
             submitted_at = record.get(
                 "submitted_at",
                 "Unknown"
@@ -1167,6 +1485,21 @@ class AdminManageUsersPage(QWidget):
                 details_label = QLabel(details)
                 details_label.setWordWrap(True)
                 card_layout.addWidget(details_label)
+
+                likes = record.get("likes", [])
+                comments = record.get("comments", [])
+                if isinstance(likes, list) or isinstance(comments, list):
+                    engagement_label = QLabel(
+                        f"Likes: {len(likes) if isinstance(likes, list) else 0}  |  "
+                        f"Comments: {len(comments) if isinstance(comments, list) else 0}"
+                    )
+                    card_layout.addWidget(engagement_label)
+
+                admin_note = str(record.get("admin_note", "") or "").strip()
+                if admin_note:
+                    note_label = QLabel(f"Admin Note: {admin_note}")
+                    note_label.setWordWrap(True)
+                    card_layout.addWidget(note_label)
 
             image_path = record.get("image_path", "")
 
@@ -1859,32 +2192,38 @@ class AdminCleanupDrivePage(QWidget):
         card_schedules.setObjectName("adminCard")
         schedule_layout = QVBoxLayout(card_schedules)
 
-        schedule_title = QLabel("Create Cleanup Drive Schedule")
+        schedule_title = QLabel("Create Clean-up Drive Schedule")
         schedule_title.setObjectName("pageHeading")
         self.txt_drive_name = QLineEdit()
-        self.txt_drive_name.setPlaceholderText("Cleanup drive name")
+        self.txt_drive_name.setPlaceholderText("Clean-up drive name")
         self.txt_drive_datetime = QLineEdit()
         self.txt_drive_datetime.setPlaceholderText("Date and time")
         self.txt_drive_location = QLineEdit()
         self.txt_drive_location.setPlaceholderText("Location / venue")
-        btn_add_schedule = QPushButton("Publish Cleanup Drive Schedule")
+        btn_add_schedule = QPushButton("Publish Clean-up Drive Schedule")
         btn_add_schedule.setObjectName("primaryButton")
         btn_add_schedule.clicked.connect(self.handle_add_schedule)
         self.list_schedules = QListWidget()
         self.list_schedules.setObjectName("announcementList")
-        btn_delete_schedule = QPushButton("Delete Selected Schedule")
+        self.list_schedules.currentRowChanged.connect(self.refresh_attendance_list)
+        schedule_layout.addWidget(QLabel("Volunteers who joined the selected drive:"))
+        self.list_attendees = QListWidget()
+        self.list_attendees.setObjectName("announcementList")
+        self.list_attendees.setMaximumHeight(120)
+        schedule_layout.addWidget(self.list_attendees)
+        btn_delete_schedule = QPushButton("Delete Selected Clean-up Drive")
         btn_delete_schedule.setObjectName("secondaryButton")
         btn_delete_schedule.clicked.connect(self.handle_delete_schedule)
 
         schedule_layout.addWidget(schedule_title)
-        schedule_layout.addWidget(QLabel("Cleanup Drive Name:"))
+        schedule_layout.addWidget(QLabel("Clean-up Drive Name:"))
         schedule_layout.addWidget(self.txt_drive_name)
         schedule_layout.addWidget(QLabel("Date & Time:"))
         schedule_layout.addWidget(self.txt_drive_datetime)
         schedule_layout.addWidget(QLabel("Location / Venue:"))
         schedule_layout.addWidget(self.txt_drive_location)
         schedule_layout.addWidget(btn_add_schedule)
-        schedule_layout.addWidget(QLabel("Existing Cleanup Schedules:"))
+        schedule_layout.addWidget(QLabel("Existing Clean-up Drives:"))
         schedule_layout.addWidget(self.list_schedules)
         schedule_layout.addWidget(btn_delete_schedule)
         layout_schedules.addWidget(card_schedules)
@@ -1894,7 +2233,7 @@ class AdminCleanupDrivePage(QWidget):
         date_time = self.txt_drive_datetime.text().strip()
         location = self.txt_drive_location.text().strip()
         if not name or not date_time or not location:
-            QMessageBox.warning(self, "Input Error", "Please fill in the cleanup drive name, date/time, and location.")
+            QMessageBox.warning(self, "Input Error", "Please fill in the clean-up drive name, date/time, and location.")
             return
 
         ids = [
@@ -1913,14 +2252,14 @@ class AdminCleanupDrivePage(QWidget):
             DataStore.save()
         except Exception as error:
             DataStore.cleanup_drives.remove(drive)
-            QMessageBox.critical(self, "Save Error", f"Could not save cleanup schedule.\n{error}")
+            QMessageBox.critical(self, "Save Error", f"Could not save clean-up drive schedule.\n{error}")
             return
 
         self.txt_drive_name.clear()
         self.txt_drive_datetime.clear()
         self.txt_drive_location.clear()
         self.refresh_schedules_list()
-        QMessageBox.information(self, "Schedule Created", "Cleanup drive schedule published successfully.")
+        QMessageBox.information(self, "Schedule Created", "Clean-up drive schedule published successfully.")
 
     def refresh_schedules_list(self):
         self.list_schedules.clear()
@@ -1931,14 +2270,27 @@ class AdminCleanupDrivePage(QWidget):
                 f"ID #{drive.get('id', '')} | {drive.get('name', '')} | "
                 f"{drive.get('datetime', '')} | {drive.get('location', '')}"
             )
+        self.refresh_attendance_list(self.list_schedules.currentRow())
+
+    def refresh_attendance_list(self, row=-1):
+        if not hasattr(self, "list_attendees"):
+            return
+        self.list_attendees.clear()
+        if row < 0 or row >= len(DataStore.cleanup_drives):
+            return
+        drive = DataStore.cleanup_drives[row]
+        for username in drive.get("joined_by", []) if isinstance(drive, dict) else []:
+            self.list_attendees.addItem(str(username))
+        if self.list_attendees.count() == 0:
+            self.list_attendees.addItem("No volunteers have joined this drive yet.")
 
     def handle_delete_schedule(self):
         row = self.list_schedules.currentRow()
         if row < 0 or row >= len(DataStore.cleanup_drives):
-            QMessageBox.warning(self, "Selection Error", "Select a cleanup schedule first.")
+            QMessageBox.warning(self, "Selection Error", "Select a clean-up drive first.")
             return
         answer = QMessageBox.question(
-            self, "Confirm Delete", "Delete the selected cleanup schedule?",
+            self, "Confirm Delete", "Delete the selected clean-up drive?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -1950,104 +2302,237 @@ class AdminCleanupDrivePage(QWidget):
             DataStore.save()
         except Exception as error:
             DataStore.cleanup_drives.insert(row, removed)
-            QMessageBox.critical(self, "Save Error", f"Could not delete cleanup schedule.\n{error}")
+            QMessageBox.critical(self, "Save Error", f"Could not delete clean-up drive.\n{error}")
             return
         self.refresh_schedules_list()
-        QMessageBox.information(self, "Schedule Deleted", "Cleanup schedule deleted successfully.")
+        QMessageBox.information(self, "Schedule Deleted", "Clean-up drive deleted successfully.")
+
+class AdminCleanupDriveReportsPage(QWidget):
+    """Review volunteer clean-up drive attendance-proof submissions."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.selected_index = None
+        layout = QVBoxLayout(self)
+        split = QSplitter()
+        self.report_list = QListWidget()
+        self.report_list.currentItemChanged.connect(self.show_selected_report)
+        split.addWidget(self.report_list)
+        panel = QWidget(); panel_layout = QVBoxLayout(panel)
+        self.lbl_status = QLabel("Status: Not selected")
+        self.lbl_owner = QLabel("Volunteer: Not selected")
+        self.lbl_drive = QLabel("Clean-up Drive: Not selected")
+        self.lbl_details = QLabel("Select a report to review."); self.lbl_details.setWordWrap(True)
+        self.lbl_image = QLabel("No image selected."); self.lbl_image.setAlignment(Qt.AlignmentFlag.AlignCenter); self.lbl_image.setMinimumHeight(150)
+        self.txt_note = QTextEdit(); self.txt_note.setPlaceholderText("Admin note / feedback"); self.txt_note.setMaximumHeight(75)
+        panel_layout.addWidget(self.lbl_status); panel_layout.addWidget(self.lbl_owner); panel_layout.addWidget(self.lbl_drive); panel_layout.addWidget(self.lbl_details); panel_layout.addWidget(self.lbl_image, 1); panel_layout.addWidget(QLabel("Administrator's Note:")); panel_layout.addWidget(self.txt_note)
+        buttons = QHBoxLayout()
+        self.btn_approve = QPushButton("Verify Report"); self.btn_approve.clicked.connect(lambda: self.moderate("Approved"))
+        self.btn_reject = QPushButton("Reject Report"); self.btn_reject.clicked.connect(lambda: self.moderate("Rejected"))
+        self.btn_award = QPushButton("Award 10 Points"); self.btn_award.clicked.connect(self.award_points)
+        for b in (self.btn_approve, self.btn_reject, self.btn_award): buttons.addWidget(b)
+        panel_layout.addLayout(buttons); split.addWidget(panel); split.setSizes([300, 600]); layout.addWidget(split)
+
+    def refresh_reports(self):
+        previous = self.selected_index; self.report_list.clear(); DataStore._synchronize_cleanup_drive_report_moderation()
+        for i, report in enumerate(DataStore.cleanup_drive_reports):
+            mod = DataStore.cleanup_drive_report_moderation[i]
+            self.report_list.addItem(f"[{mod.get('status','Pending')}] {report.get('full_name', report.get('username','Volunteer'))} — {report.get('drive_name','Clean-up Drive')}")
+            self.report_list.item(self.report_list.count()-1).setData(Qt.ItemDataRole.UserRole, i)
+        for row in range(self.report_list.count()):
+            if self.report_list.item(row).data(Qt.ItemDataRole.UserRole) == previous:
+                self.report_list.setCurrentRow(row); return
+        if self.report_list.count(): self.report_list.setCurrentRow(0)
+        else: self.show_selected_report(None)
+
+    def show_selected_report(self, current, _previous=None):
+        if current is None: self.selected_index = None; self.lbl_status.setText("Status: Not selected"); self.lbl_owner.setText("Volunteer: Not selected"); self.lbl_drive.setText("Clean-up Drive: Not selected"); self.lbl_details.setText("No clean-up drive reports."); self.lbl_image.setText("No image selected."); self.lbl_image.setPixmap(QPixmap()); self.txt_note.clear(); return
+        i = current.data(Qt.ItemDataRole.UserRole); self.selected_index = i
+        report = DataStore.cleanup_drive_reports[i]; mod = DataStore.cleanup_drive_report_moderation[i]
+        self.lbl_status.setText(f"Status: {mod.get('status','Pending')}"); self.lbl_owner.setText(f"Volunteer: {report.get('full_name','')} (@{report.get('username','')})"); self.lbl_drive.setText(f"Clean-up Drive: {report.get('drive_name','')}"); self.lbl_details.setText(f"Submitted: {report.get('submitted_at','')}\n\n{report.get('details','')}"); self.txt_note.setPlainText(mod.get('admin_note',''))
+        path = Path(report.get('image_path',''))
+        pix = QPixmap(str(path)) if path.is_file() else QPixmap()
+        if pix.isNull(): self.lbl_image.setPixmap(QPixmap()); self.lbl_image.setText("Attendance proof image unavailable.")
+        else: self.lbl_image.setText(""); self.lbl_image.setPixmap(pix.scaled(440, 250, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        self.btn_award.setEnabled(mod.get('status') == 'Approved' and not mod.get('points_awarded', False))
+
+    def moderate(self, status):
+        if self.selected_index is None: QMessageBox.warning(self, "Select Report", "Select a report first."); return
+        try: DataStore.update_cleanup_drive_report_moderation(self.selected_index, status, self.txt_note.toPlainText())
+        except Exception as error: QMessageBox.critical(self, "Update Failed", str(error)); return
+        self.refresh_reports(); QMessageBox.information(self, "Report Updated", f"Clean-up drive report marked {status.lower()}.")
+
+    def award_points(self):
+        i = self.selected_index
+        if i is None: return
+        mod = DataStore.cleanup_drive_report_moderation[i]; report = DataStore.cleanup_drive_reports[i]
+        if mod.get('status') != 'Approved': QMessageBox.warning(self, "Not Verified", "Verify the report before awarding points."); return
+        if mod.get('points_awarded'): QMessageBox.information(self, "Already Awarded", "Points have already been awarded for this report."); return
+        ok, message = award_volunteer_points(report.get('username',''), 10)
+        if not ok: QMessageBox.warning(self, "Points Not Awarded", message); return
+        mod['points_awarded'] = True; DataStore.save(); self.refresh_reports(); QMessageBox.information(self, "Points Awarded", message)
+
+class AdminReviewReportsPage(QWidget):
+    def __init__(self, waste_page, cleanup_page, parent=None):
+        super().__init__(parent); layout = QVBoxLayout(self); self.tabs = QTabWidget(); self.tabs.addTab(waste_page, "Waste Report"); self.tabs.addTab(cleanup_page, "Clean-up Drive Report"); layout.addWidget(self.tabs); self.waste_page = waste_page; self.cleanup_page = cleanup_page
+        self.tabs.currentChanged.connect(self._refresh_current_tab)
+    def _refresh_current_tab(self, index):
+        if index == 0: self.waste_page.refresh_admin_reports()
+        else: self.cleanup_page.refresh_reports()
+    def refresh_admin_reports(self): self.waste_page.refresh_admin_reports()
+    def refresh_reports(self): self.cleanup_page.refresh_reports()
+
+class AdminClickableFeedImageLabel(QLabel):
+    """Inline image preview that opens the full-size image when clicked."""
+    def __init__(self, image_path, parent=None):
+        super().__init__(parent)
+        self.image_path = str(image_path)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip("Click to view image")
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        pixmap = QPixmap(self.image_path)
+        if not pixmap.isNull():
+            self.setPixmap(pixmap.scaled(
+                360, 240,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            ))
+        else:
+            self.setText("Image preview unavailable")
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Public Feed Image Preview")
+            dialog.resize(800, 650)
+            layout = QVBoxLayout(dialog)
+            image = QLabel()
+            image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            pixmap = QPixmap(self.image_path)
+            if pixmap.isNull():
+                image.setText("Image unavailable.")
+            else:
+                image.setPixmap(pixmap.scaled(
+                    760, 580,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                ))
+            layout.addWidget(image)
+            dialog.exec()
+        super().mousePressEvent(event)
+
+
+class AdminPublicFeedPage(QWidget):
+    """Admin view of both public feeds, with the same like/comment actions as volunteers."""
+    def __init__(self, parent=None):
+        super().__init__(parent); layout = QVBoxLayout(self); self.tabs = QTabWidget()
+        self.waste_list = QListWidget(); self.cleanup_list = QListWidget()
+        for widget in (self.waste_list, self.cleanup_list):
+            widget.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+            widget.verticalScrollBar().setSingleStep(12)
+        self.tabs.addTab(self.waste_list, "Waste Report Feed"); self.tabs.addTab(self.cleanup_list, "Clean-up Drive Feed"); layout.addWidget(self.tabs)
+        refresh = QPushButton("Refresh Feed"); refresh.clicked.connect(self.refresh_feed); layout.addWidget(refresh)
+        self.refresh_feed()
+
+    def _add_interactive_post(self, target_list, index, record, cleanup=False):
+        widget = QWidget(); box = QVBoxLayout(widget)
+        box.addWidget(QLabel(f"{record.get('full_name',record.get('username','Volunteer'))} (@{record.get('username','')})"))
+        box.addWidget(QLabel(record.get('drive_name','Clean-up Drive') if cleanup else record.get('report_type','Waste Report')))
+        details = QLabel(record.get('details','')); details.setWordWrap(True); box.addWidget(details)
+        image_path = record.get('image_path', '')
+        if image_path and Path(str(image_path)).is_file():
+            image_preview = AdminClickableFeedImageLabel(str(image_path))
+            box.addWidget(image_preview)
+        likes = record.get('likes', []) if isinstance(record.get('likes', []), list) else []
+        like = QPushButton(f"Like ({len(likes)})")
+        like.clicked.connect(lambda checked=False, i=index, c=cleanup: self._like(i,c))
+        box.addWidget(like); box.addWidget(QLabel("Comments"))
+        comments = record.get('comments', []) if isinstance(record.get('comments', []), list) else []
+        for comment in comments:
+            if isinstance(comment, dict):
+                label = QLabel(f"{comment.get('full_name','Volunteer')}: {comment.get('text','')}"); label.setWordWrap(True); box.addWidget(label)
+        field = QLineEdit(); field.setPlaceholderText("Write a comment..."); box.addWidget(field)
+        post = QPushButton("Post Comment"); post.clicked.connect(lambda checked=False, i=index, c=cleanup, f=field: self._comment(i,c,f)); box.addWidget(post)
+        item = QListWidgetItem(); item.setSizeHint(widget.sizeHint()); target_list.addItem(item); target_list.setItemWidget(item,widget)
+
+    def refresh_feed(self):
+        self.waste_list.clear(); self.cleanup_list.clear()
+        for i, _text, record in DataStore.get_approved_report_records(): self._add_interactive_post(self.waste_list, i, record, False)
+        for i, record in DataStore.get_approved_cleanup_drive_reports(): self._add_interactive_post(self.cleanup_list, i, record, True)
+        if not self.waste_list.count(): self.waste_list.addItem("No approved waste reports yet.")
+        if not self.cleanup_list.count(): self.cleanup_list.addItem("No approved clean-up drive reports yet.")
+
+    def _show_image(self, path):
+        dialog = QDialog(self); dialog.setWindowTitle("Public Feed Image"); dialog.resize(800, 650); box = QVBoxLayout(dialog)
+        image = QLabel(); image.setAlignment(Qt.AlignmentFlag.AlignCenter); pix = QPixmap(path)
+        if pix.isNull(): image.setText("Image unavailable.")
+        else: image.setPixmap(pix.scaled(760, 580, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        box.addWidget(image); dialog.exec()
+
+    def _like(self, index, cleanup):
+        account = Session.current_account
+        username = getattr(account, 'username', 'admin') if account else 'admin'
+        try:
+            if cleanup: DataStore.toggle_cleanup_drive_report_like(index, username)
+            else: DataStore.toggle_report_like(index, username)
+            self.refresh_feed()
+        except Exception as error: QMessageBox.warning(self, "Like Failed", str(error))
+
+    def _comment(self, index, cleanup, field):
+        account = Session.current_account
+        username = getattr(account, 'username', 'admin') if account else 'admin'
+        full_name = getattr(account, 'full_name', 'Administrator') if account else 'Administrator'
+        text = field.text().strip()
+        if not text: QMessageBox.warning(self, "Empty Comment", "Please write a comment first."); return
+        try:
+            if cleanup: DataStore.add_cleanup_drive_report_comment(index, username, full_name, text)
+            else: DataStore.add_report_comment(index, username, full_name, text)
+            self.refresh_feed()
+        except Exception as error: QMessageBox.warning(self, "Comment Failed", str(error))
 
 class AdminDashboard(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Admin Dashboard | Post-Flood Waste Management")
-        self.resize(880, 680)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 15)
-        main_layout.setSpacing(12)
-
-        top_bar = QHBoxLayout()
-        admin_badge = QLabel("ROLE: ADMINISTRATOR")
-        admin_badge.setObjectName("adminBadge")
-        btn_logout = QPushButton("Log Out")
-        btn_logout.setObjectName("secondaryButton")
-        btn_logout.clicked.connect(self.logout)
-        top_bar.addWidget(admin_badge)
-        top_bar.addStretch()
-        top_bar.addWidget(btn_logout)
-        main_layout.addLayout(top_bar)
-
+        self.resize(1100, 760)
+        main_layout = QVBoxLayout(self); main_layout.setContentsMargins(20, 20, 20, 15); main_layout.setSpacing(12)
+        top_bar = QHBoxLayout(); admin_badge = QLabel("ROLE: ADMINISTRATOR"); admin_badge.setObjectName("adminBadge")
+        btn_logout = QPushButton("Log Out"); btn_logout.setObjectName("secondaryButton"); btn_logout.clicked.connect(self.logout)
+        top_bar.addWidget(admin_badge); top_bar.addStretch(); top_bar.addWidget(btn_logout); main_layout.addLayout(top_bar)
         self.stack = QStackedWidget()
-        self.page_tasks = AdminCreateTaskPage(self)
-        self.page_notifications = AdminNotificationsPage(self)
-        self.page_reports = AdminWasteReportsPage(self)
-        self.page_users = AdminManageUsersPage(self)
-        self.page_claims = AdminRewardClaimsPage(self)
-        self.page_tickets = AdminVolunteerTicketsPage(self)
-        self.page_schedules = AdminCleanupDrivePage(self)
-        for page in (self.page_tasks, self.page_notifications, self.page_reports,
-                     self.page_users, self.page_claims, self.page_tickets,
-                     self.page_schedules):
-            self.stack.addWidget(page)
+        self.page_tasks = AdminCreateTaskPage(self); self.page_notifications = AdminNotificationsPage(self)
+        self.page_waste_reports = AdminWasteReportsPage(self); self.page_cleanup_reports = AdminCleanupDriveReportsPage(self)
+        self.page_reports = AdminReviewReportsPage(self.page_waste_reports, self.page_cleanup_reports, self)
+        self.page_schedules = AdminCleanupDrivePage(self); self.page_public_feed = AdminPublicFeedPage(self)
+        self.page_users = AdminManageUsersPage(self); self.page_claims = AdminRewardClaimsPage(self); self.page_tickets = AdminVolunteerTicketsPage(self)
+        self.pages = [self.page_tasks, self.page_notifications, self.page_reports, self.page_schedules, self.page_public_feed, self.page_users, self.page_claims, self.page_tickets]
+        for page in self.pages: self.stack.addWidget(page)
+        # Use pixel-based scrolling on the Admin lists for smoother navigation.
+        for list_widget in self.findChildren(QListWidget):
+            list_widget.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+            list_widget.verticalScrollBar().setSingleStep(12)
         main_layout.addWidget(self.stack, 1)
-
-        nav_frame = QFrame()
-        nav_frame.setObjectName("navBarFrame")
-        nav_layout = QHBoxLayout(nav_frame)
-        nav_layout.setContentsMargins(15, 8, 15, 8)
-        
-        self.btn_a_tasks = QPushButton("Create\nTask")
-        self.btn_a_notif = QPushButton("Send\nNotif")
-        self.btn_a_reports = QPushButton("Review\nReports")
-        self.btn_a_users = QPushButton("Manage\nProfiles")
-        self.btn_a_claims = QPushButton("Reward\nClaims")
-        self.btn_a_tickets = QPushButton("Manage\nTickets")
-        self.btn_a_schedules = QPushButton("Cleanup\nSchedules")
-        
-        self.admin_nav_buttons = [
-            (self.btn_a_tasks, 0), 
-            (self.btn_a_notif, 1),
-            (self.btn_a_reports, 2), 
-            (self.btn_a_users, 3),
-            (self.btn_a_claims, 4), 
-            (self.btn_a_tickets, 5),
-            (self.btn_a_schedules, 6),
-        ]
-        for btn, index in self.admin_nav_buttons:
-            btn.setObjectName("capsuleNavBtn")
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.clicked.connect(lambda _, i=index: self.switch_admin_tab(i))
-            nav_layout.addWidget(btn)
-        main_layout.addWidget(nav_frame)
-        self.switch_admin_tab(0)
+        nav_frame = QFrame(); nav_frame.setObjectName("navBarFrame"); nav_layout = QHBoxLayout(nav_frame); nav_layout.setContentsMargins(8, 6, 8, 6); nav_layout.setSpacing(5)
+        labels = ["Create\nTask", "Send\nNotification", "Review\nReports", "Clean-up\nDrive", "Public\nTab", "Manage\nProfiles", "Reward\nClaims", "Manage\nTicket"]
+        self.admin_nav_buttons = []
+        for index, label in enumerate(labels):
+            button = QPushButton(label); button.setObjectName("capsuleNavBtn"); button.setCursor(Qt.CursorShape.PointingHandCursor); button.clicked.connect(lambda checked=False, i=index: self.switch_admin_tab(i)); nav_layout.addWidget(button, 1); self.admin_nav_buttons.append((button, index))
+        main_layout.addWidget(nav_frame); self.switch_admin_tab(0)
 
     def switch_admin_tab(self, index: int):
         self.stack.setCurrentIndex(index)
-        page_refresh = {
-            2: self.page_reports.refresh_admin_reports,
-            3: self.page_users.refresh_volunteer_list,
-            4: self.page_claims.refresh_reward_claims_list,
-            5: self.page_tickets.refresh_admin_tickets,
-            6: self.page_schedules.refresh_schedules_list,
-        }
-        if index in page_refresh:
-            page_refresh[index]()
-        for btn, btn_index in self.admin_nav_buttons:
-            active = "true" if btn_index == index else "false"
-            btn.setProperty("active", active)
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+        if index == 2:
+            self.page_reports._refresh_current_tab(self.page_reports.tabs.currentIndex())
+        elif index == 3: self.page_schedules.refresh_schedules_list()
+        elif index == 4: self.page_public_feed.refresh_feed()
+        elif index == 5: self.page_users.refresh_volunteer_list()
+        elif index == 6: self.page_claims.refresh_reward_claims_list()
+        elif index == 7: self.page_tickets.refresh_admin_tickets()
+        for button, button_index in self.admin_nav_buttons:
+            button.setProperty("active", "true" if button_index == index else "false")
+            button.style().unpolish(button); button.style().polish(button)
 
     def logout(self):
-        reply = QMessageBox.question(
-            self,
-            "Confirm Logout",
-            "Are you sure you want to log out?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
+        reply = QMessageBox.question(self, "Confirm Logout", "Are you sure you want to log out?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         if reply == QMessageBox.StandardButton.Yes:
             from login_window import LoginWindow
-            Session.logout()
-            self.login_window = LoginWindow()
-            self.login_window.show()
-            self.close()
+            self.login_window = LoginWindow(); self.login_window.show(); self.close()

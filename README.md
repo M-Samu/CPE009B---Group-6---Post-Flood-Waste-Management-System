@@ -155,6 +155,39 @@ Progress 9: Public Feed, Volunteer Profile Management, and Report Moderation Imp
     Profile section, making volunteer point distribution easier to access.
 - Continued improving the system's functionality and preparing the new features for integration 
     testing and submission.
-- Fixed and improved the Admin Dashboard's announcement email functionality and the Forgot Password feature 
-    by correcting Gmail SMTP connection settings, ensuring reliable email delivery for announcements and 
-    password verification codes.
+
+
+Progress 10 - Public Feed and Clean-up Drive Management, Points Distribution Improvement, and Notification Management - ASAJAR
+
+- Expanded the Public Feed feature by adding a Public Feed tab to the Admin Dashboard, allowing 
+    administrators to view and interact with approved waste reports and clean-up drive reports.
+- Organized the Public Feed into two sub-tabs, Waste Report Feed and Clean-up Drive Feed, for 
+    both the Admin and Volunteer Dashboards.
+- Improved image viewing by adding inline image previews and image pop-up functionality, allowing 
+    users and administrators to view uploaded images more conveniently.
+- Added smooth scrolling to the Admin Dashboard to improve navigation and maintain consistency with 
+    the Volunteer Dashboard.
+- Expanded the Volunteer Clean-up Drive section by separating Clean-up Schedules and Clean-up Drive 
+    Reports, allowing volunteers to view published schedules, join drives, and submit reports with descriptions 
+    and supporting images.
+- Improved clean-up drive participation by adding confirmation prompts when volunteers join or cancel 
+    their participation.
+- Added an Admin attendance management feature to display volunteers who have joined a scheduled 
+    clean-up drive.
+- Improved the Admin Review Reports section by separating Waste Reports and Clean-up Drive Reports, 
+    making it easier to review and moderate the two types of submissions.
+- Enhanced the points system by supporting point distribution for verified waste reports and confirmed 
+    clean-up drive attendance, including attendance proof submitted through reports.
+- Renamed the Admin Cleanup Schedules section to Clean-up Drive while retaining its scheduling functions, 
+    including creating, publishing, viewing, and deleting clean-up drive schedules.
+- Reorganized the Admin Dashboard navigation into the following order: Create Task, Send Notification, 
+    Review Reports, Clean-up Drive, Public Feed, Manage Profiles, Reward Claims, and Manage Ticket.
+- Improved the Admin Manage Profiles section to display volunteers' waste reports and clean-up drive 
+    reports, including available descriptions, images, submission dates, review statuses, and engagement information.
+- Expanded the notification management system by adding a My Notifications section for administrators, 
+    allowing them to view, edit, and delete their saved announcements.
+- Improved the connection between email announcements and dashboard notifications so that administrator 
+    announcements can be sent through email and saved for viewing within the application, while keeping 
+    password-reset verification separate.
+- Continued improving the Volunteer Notifications section to display announcements received from administrators; 
+    however, the dashboard notification display issue remains unresolved and requires further testing.

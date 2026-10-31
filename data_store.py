@@ -12,7 +12,12 @@ class DataStore:
     # Existing application data
     tasks = []
     announcements = []
+    # Persistent admin notifications shown in the dashboard and emailed to recipients.
+    notification_records = []
     waste_reports = []
+    # Progress 10: clean-up drive attendance reports are stored separately.
+    cleanup_drive_reports = []
+    cleanup_drive_report_moderation = []
 
     cleanup_drives = [
         {
@@ -80,8 +85,16 @@ class DataStore:
                     for item in data["announcements"]
                 ]
 
+            if "notification_records" in data and isinstance(data["notification_records"], list):
+                cls.notification_records = data["notification_records"]
+
             if "waste_reports" in data:
                 cls.waste_reports = data["waste_reports"]
+
+            if "cleanup_drive_reports" in data:
+                cls.cleanup_drive_reports = data["cleanup_drive_reports"]
+            if "cleanup_drive_report_moderation" in data:
+                cls.cleanup_drive_report_moderation = data["cleanup_drive_report_moderation"]
 
             if "cleanup_drives" in data:
                 cls.cleanup_drives = data["cleanup_drives"]
@@ -112,9 +125,40 @@ class DataStore:
 
             # Give old reports a default moderation status.
             cls._synchronize_report_moderation()
+            cls._synchronize_cleanup_drive_report_moderation()
 
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as error:
             print(f"Error loading persistent data store: {error}")
+
+    @classmethod
+    def reload_notification_data(cls):
+        """Reload only notification-related fields from disk.
+
+        This allows the Volunteer Notifications tab to see announcements
+        saved by an Admin session/process after the application was started,
+        without reloading or overwriting unrelated in-memory application data.
+        """
+        if not DATASTORE_FILE.exists():
+            return
+
+        try:
+            data = json.loads(DATASTORE_FILE.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return
+
+            if isinstance(data.get("notification_records"), list):
+                cls.notification_records = data["notification_records"]
+
+            if isinstance(data.get("announcements"), list):
+                cls.announcements = [
+                    tuple(item) if isinstance(item, list) else item
+                    for item in data["announcements"]
+                ]
+
+            if isinstance(data.get("cleared_announcements"), dict):
+                cls.cleared_announcements = data["cleared_announcements"]
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as error:
+            print(f"Error refreshing notification data: {error}")
 
     @classmethod
     def save(cls):
@@ -126,6 +170,7 @@ class DataStore:
         )
 
         cls._synchronize_report_moderation()
+        cls._synchronize_cleanup_drive_report_moderation()
         cls._synchronize_report_social_data()
 
         data = {
@@ -137,8 +182,11 @@ class DataStore:
                 else item
                 for item in cls.announcements
             ],
+            "notification_records": cls.notification_records,
 
             "waste_reports": cls.waste_reports,
+            "cleanup_drive_reports": cls.cleanup_drive_reports,
+            "cleanup_drive_report_moderation": cls.cleanup_drive_report_moderation,
             "cleanup_drives": cls.cleanup_drives,
             "report_records": cls.report_records,
             "reward_claims": cls.reward_claims,
@@ -417,7 +465,9 @@ class DataStore:
 
         cls.report_moderation[report_index] = {
             "status": status,
-            "admin_note": admin_note.strip()
+            "admin_note": admin_note.strip(),
+            # Preserve the reward guard if an already rewarded report is reviewed again.
+            "points_awarded": old_entry.get("points_awarded", False),
         }
 
         try:
@@ -496,6 +546,105 @@ class DataStore:
             cls.report_records = old_records
             cls.report_moderation = old_moderation
             cls.report_tickets = old_tickets
+            raise
+
+    # ==========================================================================
+    # PROGRESS 10: CLEAN-UP DRIVE REPORTS AND MODERATION
+    # ==========================================================================
+
+    @classmethod
+    def _synchronize_cleanup_drive_report_moderation(cls):
+        if not isinstance(cls.cleanup_drive_reports, list):
+            cls.cleanup_drive_reports = []
+        if not isinstance(cls.cleanup_drive_report_moderation, list):
+            cls.cleanup_drive_report_moderation = []
+        while len(cls.cleanup_drive_report_moderation) < len(cls.cleanup_drive_reports):
+            cls.cleanup_drive_report_moderation.append({
+                "status": "Pending", "admin_note": "", "points_awarded": False
+            })
+        cls.cleanup_drive_report_moderation = cls.cleanup_drive_report_moderation[:len(cls.cleanup_drive_reports)]
+        for i, entry in enumerate(cls.cleanup_drive_report_moderation):
+            if not isinstance(entry, dict):
+                cls.cleanup_drive_report_moderation[i] = {"status": "Pending", "admin_note": "", "points_awarded": False}
+                continue
+            if entry.get("status") not in ("Pending", "Approved", "Rejected"):
+                entry["status"] = "Pending"
+            entry.setdefault("admin_note", "")
+            entry.setdefault("points_awarded", False)
+
+    @classmethod
+    def update_cleanup_drive_report_moderation(cls, report_index, status, admin_note=""):
+        if status not in ("Pending", "Approved", "Rejected"):
+            raise ValueError("Invalid clean-up drive report status.")
+        if not 0 <= report_index < len(cls.cleanup_drive_reports):
+            raise IndexError("Clean-up drive report was not found.")
+        cls._synchronize_cleanup_drive_report_moderation()
+        entry = cls.cleanup_drive_report_moderation[report_index]
+        entry["status"] = status
+        entry["admin_note"] = str(admin_note or "").strip()
+        cls.save()
+
+    @classmethod
+    def get_approved_cleanup_drive_reports(cls):
+        cls._synchronize_cleanup_drive_report_moderation()
+        return [(i, report) for i, report in enumerate(cls.cleanup_drive_reports)
+                if cls.cleanup_drive_report_moderation[i].get("status") == "Approved"]
+
+
+    @classmethod
+    def toggle_cleanup_drive_report_like(cls, report_index, username):
+        """Toggle a like on an approved clean-up drive report."""
+        username = str(username or "").strip()
+        if not username:
+            raise ValueError("A valid username is required.")
+        if not 0 <= report_index < len(cls.cleanup_drive_reports):
+            raise IndexError("Clean-up drive report was not found.")
+        cls._synchronize_cleanup_drive_report_moderation()
+        if cls.cleanup_drive_report_moderation[report_index].get("status") != "Approved":
+            raise ValueError("Only approved clean-up drive reports can be liked.")
+        record = cls.cleanup_drive_reports[report_index]
+        likes = record.setdefault("likes", [])
+        if not isinstance(likes, list):
+            likes = record["likes"] = []
+        old_likes = list(likes)
+        existing = any(isinstance(name, str) and name.casefold() == username.casefold() for name in likes)
+        if existing:
+            record["likes"] = [name for name in likes if not (isinstance(name, str) and name.casefold() == username.casefold())]
+            liked = False
+        else:
+            likes.append(username)
+            liked = True
+        try:
+            cls.save()
+        except Exception:
+            record["likes"] = old_likes
+            raise
+        return liked
+
+    @classmethod
+    def add_cleanup_drive_report_comment(cls, report_index, username, full_name, comment_text):
+        """Add a comment to an approved clean-up drive report."""
+        from datetime import datetime
+        username = str(username or "").strip()
+        full_name = str(full_name or username).strip()
+        comment_text = str(comment_text or "").strip()
+        if not username or not comment_text:
+            raise ValueError("A username and non-empty comment are required.")
+        if not 0 <= report_index < len(cls.cleanup_drive_reports):
+            raise IndexError("Clean-up drive report was not found.")
+        cls._synchronize_cleanup_drive_report_moderation()
+        if cls.cleanup_drive_report_moderation[report_index].get("status") != "Approved":
+            raise ValueError("Only approved clean-up drive reports can be commented on.")
+        record = cls.cleanup_drive_reports[report_index]
+        comments = record.setdefault("comments", [])
+        if not isinstance(comments, list):
+            comments = record["comments"] = []
+        comment = {"username": username, "full_name": full_name, "text": comment_text, "submitted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+        comments.append(comment)
+        try:
+            cls.save()
+        except Exception:
+            comments.pop()
             raise
 
     # ==========================================================================
