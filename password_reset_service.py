@@ -1,20 +1,25 @@
 import random
 import smtplib
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from email.message import EmailMessage
 from PyQt6.QtCore import QThread, pyqtSignal
+
 from data_manager import load_accounts, save_accounts
 from waste_management_models import hash_password
 
-# SMTP Configuration
+# Load the .env file from this Python file's directory
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
+# Gmail SMTP Configuration
 SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-SMTP_LOGIN = os.getenv("SMTP_LOGIN", "pfwm.noreply@gmail.com").strip()
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "szqldlsbmojlvmor").strip()
+SMTP_PORT = 465
+SMTP_LOGIN = os.getenv("SMTP_LOGIN", "").strip()
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "").strip()
 
 RESET_CODES = {}
 LOGIN_VERIFICATION_CODES = {}
-
 
 class VerificationEmailThread(QThread):
     """Sends verification emails in the background without freezing the UI."""
@@ -46,8 +51,7 @@ class VerificationEmailThread(QThread):
                 f"If you did not request this, please ignore this email."
             )
 
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
                 server.login(SMTP_LOGIN, SMTP_PASSWORD)
                 server.send_message(msg)
 
@@ -99,12 +103,12 @@ def auto_send_reset_code(
     code = f"{random.randint(100000, 999999)}"
 
     # PRINT CODE TO VS CODE TERMINAL FOR DEBUGGING/TESTING
-    print("\n" + "=" * 50)
+    print("\n" + "-" * 60)
     print(f"   [PASSWORD RESET CODE GENERATED]")
     print(f"   Target User  : {target_username}")
     print(f"   Target Email : {target_email}")
     print(f"   VERIFICATION CODE : {code}")
-    print("=" * 50 + "\n")
+    print("-" * 60 + "\n")
 
     RESET_CODES[target_username.casefold()] = code
     RESET_CODES[target_email.casefold()] = code

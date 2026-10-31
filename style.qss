@@ -297,12 +297,6 @@ QListWidget::item:hover {
     background-color: #f1f5f9;
 }
 
-QListWidget::item:selected {
-    background-color: #dbeafe;
-    color: #0f172a;
-    border: 1px solid #93c5fd;
-}
-
 QLabel#versionLabel {
     color: #64748b;
     font-size: 11px;
@@ -334,7 +328,7 @@ QFrame#adminCard {
 
 
 /* ==============================================================================
-   5. NAVIGATION BARS (CAPSULE PILLS & CIRCULAR BUTTONS)
+   5. NAVIGATION BARS 
    Connected Files: volunteer_dashboard.py, admin_dashboard.py
    ============================================================================== */
 
@@ -415,4 +409,11 @@ QComboBox {
 
 QComboBox::drop-down {
     border: none;
+}
+
+/* Restored from Progress 8: clear selected-list-item contrast. */
+QListWidget::item:selected {
+    background-color: #dbeafe;
+    color: #0f172a;
+    border: 1px solid #93c5fd;
 }

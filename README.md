@@ -133,3 +133,28 @@ Progress 8: System Notification and Email Announcements - PELLAZAR
     and can still be viewed within the application.
 - Improved the communication between administrators and volunteers by providing email notifications 
     for important system announcements.
+
+
+Progress 9: Public Feed, Volunteer Profile Management, and Report Moderation Improvements - ASAJAR
+- Added a Public Feed feature to the volunteer dashboard where volunteers can view approved 
+    waste management reports submitted by other users.
+-Implemented like and unlike functionality to allow volunteers to interact with reports 
+    in the public feed.
+- Added a comment section where volunteers can share comments and interact with other users' reports.
+- Added a feature for viewing other volunteers' public profiles, displaying basic information 
+    such as their name, username, profile picture, and general description.
+- Improved the Valid ID Upload feature by saving uploaded identification files in the designated 
+    data folder and updating the volunteer's account information.
+- Enhanced the admin dashboard's Manage User's Profile section to support searching for users, 
+    viewing their profile information, and deleting user accounts.
+- Added report moderation features that allow administrators to review submitted waste reports 
+    and their attachments before approving or rejecting them for public viewing.
+- Improved ticket management by allowing administrators to respond to submitted tickets, 
+    including reports involving other user profiles.
+- Reorganized the admin dashboard by moving the Send Points feature under the Manage User's     
+    Profile section, making volunteer point distribution easier to access.
+- Continued improving the system's functionality and preparing the new features for integration 
+    testing and submission.
+- Fixed and improved the Admin Dashboard's announcement email functionality and the Forgot Password feature 
+    by correcting Gmail SMTP connection settings, ensuring reliable email delivery for announcements and 
+    password verification codes.
