@@ -21,7 +21,7 @@ class RegistrationWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Volunteer Registration")
-        self.setFixedSize(440, 570)
+        self.setFixedSize(440, 610)
 
         # Track whether registration was completed successfully
         self._registered = False
@@ -53,6 +53,10 @@ class RegistrationWindow(QWidget):
         # Create the full name input field
         self.full_name = QLineEdit()
         self.full_name.setPlaceholderText("Full name")
+
+        # Create the email address input field
+        self.email = QLineEdit()
+        self.email.setPlaceholderText("Email address")
 
         # Create the username input field
         self.username = QLineEdit()
@@ -97,6 +101,7 @@ class RegistrationWindow(QWidget):
         layout.addWidget(subtitle)
         layout.addSpacing(8)
         layout.addWidget(self.full_name)
+        layout.addWidget(self.email)
         layout.addWidget(self.username)
         layout.addWidget(self.password)
         layout.addWidget(self.confirm_password)
@@ -119,6 +124,7 @@ class RegistrationWindow(QWidget):
     def register(self):
         # Get the registration details entered by the user
         full_name = self.full_name.text().strip()
+        email = self.email.text().strip()
         username = self.username.text().strip()
         password = self.password.text()
         confirm_password = self.confirm_password.text()
@@ -128,15 +134,20 @@ class RegistrationWindow(QWidget):
             full_name, username, password, confirm_password
         )
 
+        # Additional quick email check
+        if valid and ("@" not in email or "." not in email):
+            valid = False
+            message = "Please enter a valid email address."
+
         # Display an error if the input is invalid
         if not valid:
             self._show_status(message, "error")
             return
 
-        # Save the new volunteer account
+        # Save the new volunteer account with email
         try:
             success, message = register_volunteer(
-                full_name, username, password
+                full_name, email, username, password
             )
         except (OSError, RuntimeError) as exc:
             # Display an error if the account cannot be saved

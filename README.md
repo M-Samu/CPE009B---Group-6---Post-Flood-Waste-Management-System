@@ -107,3 +107,16 @@ Progress 6: Application Icon, Cleanup Drive Scheduling, Task Management, and Pro
     adds its corresponding task.
 - Added styling for selected list items to improve text readability and selection appearance.
 - Extended data_store.py to save and load volunteer task participation and cleared-task records.
+
+
+Progress 7: Forgot Password, Email Integration, and Account Email Support – PELLAZAR
+- Added a Forgot Password option to the login interface, allowing users to open a password-reset page without 
+    leaving the login window.
+- Added a password-reset service that generates a six-digit verification code and sends it to the registered 
+    email address through SMTP.
+- Implemented verification-code checking and password updating, including saving the updated password hash 
+    and salt to the account data.
+- Added an email-address field to the volunteer registration interface.
+- Updated account registration to check for duplicate usernames and email addresses.
+- Extended the account model and serialization logic to store and retrieve email addresses.
+- Added a background email-sending thread to avoid performing SMTP operations directly on the main GUI thread.

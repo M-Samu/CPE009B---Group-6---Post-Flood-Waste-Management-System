@@ -33,7 +33,7 @@ def initialize_storage():
     if not any(account.username.casefold() == "admin" for account in accounts):
         accounts.append(
             Account.create(
-                "admin", "System Administrator", "admin123", "Admin"
+                "admin", "System Administrator", "admin123", "Admin", email="pfwm.noreply@gmail.com"
             )
         )
 
@@ -92,19 +92,23 @@ def find_account(username: str) -> Account | None:
     )
 
 # Register a new volunteer account
-def register_volunteer(full_name: str, username: str, password: str) -> tuple[bool, str]:
+def register_volunteer(full_name: str, email: str, username: str, password: str) -> tuple[bool, str]:
     # Load the existing account list
     accounts = load_accounts()
 
-    # Prepare the username for a case-insensitive comparison
+    # Prepare keys for case-insensitive comparison
     username_key = username.strip().casefold()
+    email_key = email.strip().casefold()
 
-    # Prevent registration if the username is already being used
+    # Prevent registration if username or email is already in use
     if any(account.username.casefold() == username_key for account in accounts):
         return False, "That username is already registered."
 
+    if any(account.email.casefold() == email_key for account in accounts):
+        return False, "That email address is already registered."
+
     # Create and add the new volunteer account
-    accounts.append(Account.create(username, full_name, password, "Volunteer"))
+    accounts.append(Account.create(username, full_name, password, "Volunteer", email=email))
 
     # Save the updated account list
     save_accounts(accounts)

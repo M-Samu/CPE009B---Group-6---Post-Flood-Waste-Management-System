@@ -42,7 +42,8 @@ class Account:
         username: str,
         full_name: str,
         password: str,
-        role: str = "Volunteer"
+        role: str = "Volunteer",
+        email: str = ""
     ):
         password_hash, salt = hash_password(password)
 
@@ -53,6 +54,7 @@ class Account:
             salt=salt,
             role=role,
             created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            email=email.strip(),
         )
 
     def verify_password(self, password: str) -> bool:
