@@ -1,4 +1,8 @@
-from PyQt6.QtCore import Qt
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QStackedWidget, QFrame, QListWidget, QLineEdit, QTextEdit, 
@@ -7,6 +11,48 @@ from PyQt6.QtWidgets import (
 
 from waste_management_models import Session
 from data_store import DataStore
+
+
+# WORKER THREAD FOR SENDING ANNOUNCEMENT EMAILS
+class EmailAnnouncementThread(QThread):
+    finished_signal = pyqtSignal(bool, str)
+
+    def __init__(self, title, body):
+        super().__init__()
+        self.title = title
+        self.body = body
+
+    def run(self):
+        from data_manager import load_accounts
+        accounts = load_accounts()
+        recipient_emails = [
+            acc.email.strip() for acc in accounts
+            if acc.role == "Volunteer" and acc.email and "@" in acc.email
+        ]
+
+        if not recipient_emails:
+            self.finished_signal.emit(False, "Notification saved, but no volunteer email addresses were found.")
+            return
+
+        # Replace 'your-app-password-here' with your 16-character Google App Password
+        sender_email = "pfwm.noreply@gmail.com"
+        sender_password = "szqldlsbmojlvmor"
+
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = f"Post-Flood Waste Management <{sender_email}>"
+            msg["To"] = ", ".join(recipient_emails)
+            msg["Subject"] = f"📢 Announcement: {self.title}"
+            msg.attach(MIMEText(self.body, "plain"))
+
+            # Use SSL directly over Port 465 to prevent unexpected connection resets
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+                server.login(sender_email, sender_password)
+                server.sendmail(sender_email, recipient_emails, msg.as_string())
+
+            self.finished_signal.emit(True, f"Notification broadcasted and email sent to {len(recipient_emails)} volunteer(s)!")
+        except Exception as exc:
+            self.finished_signal.emit(False, f"Notification saved, but failed to send email: {str(exc)}")
 
 
 # MAIN ADMIN DASHBOARD CLASS
@@ -76,16 +122,16 @@ class AdminDashboard(QWidget):
         lbl_n_body = QLabel("Announcement Body:")
         self.txt_n_body = QTextEdit()
 
-        btn_send_notif = QPushButton("Send Notification to All Volunteers")
-        btn_send_notif.setObjectName("primaryButton")
-        btn_send_notif.clicked.connect(self.handle_send_notification)
+        self.btn_send_notif = QPushButton("Send Notification to All Volunteers")
+        self.btn_send_notif.setObjectName("primaryButton")
+        self.btn_send_notif.clicked.connect(self.handle_send_notification)
 
         n_layout.addWidget(n_title)
         n_layout.addWidget(lbl_n_heading)
         n_layout.addWidget(self.txt_n_heading)
         n_layout.addWidget(lbl_n_body)
         n_layout.addWidget(self.txt_n_body)
-        n_layout.addWidget(btn_send_notif)
+        n_layout.addWidget(self.btn_send_notif)
         layout_notif.addWidget(card_notif)
 
         # Page 2: Review & Delete Waste Reports
@@ -210,7 +256,7 @@ class AdminDashboard(QWidget):
 
         layout_claims.addWidget(card_claims)
 
-        # Page 5: Create Cleanup Schedule (NEW)
+        # Page 5: Create Cleanup Schedule
         page_schedules = QWidget()
         layout_schedules = QVBoxLayout(page_schedules)
         card_schedules = QFrame()
@@ -271,7 +317,7 @@ class AdminDashboard(QWidget):
 
         main_layout.addWidget(self.stack, 1)
 
-        # Capsule Admin Nav Bar (Matching Volunteer Styling)
+        # Capsule Admin Nav Bar
         nav_frame = QFrame()
         nav_frame.setObjectName("bottomNavFrame")
         nav_layout = QHBoxLayout(nav_frame)
@@ -342,9 +388,25 @@ class AdminDashboard(QWidget):
 
         DataStore.announcements.insert(0, (title, body))
         DataStore.save()
+
+        self.btn_send_notif.setEnabled(False)
+        self.btn_send_notif.setText("Sending Emails...")
+
+        self.email_thread = EmailAnnouncementThread(title, body)
+        self.email_thread.finished_signal.connect(self._on_announcement_emails_sent)
+        self.email_thread.start()
+
+    def _on_announcement_emails_sent(self, success, message):
+        self.btn_send_notif.setEnabled(True)
+        self.btn_send_notif.setText("Send Notification to All Volunteers")
+
         self.txt_n_heading.clear()
         self.txt_n_body.clear()
-        QMessageBox.information(self, "Success", "Notification broadcasted to all volunteers!")
+
+        if success:
+            QMessageBox.information(self, "Success", message)
+        else:
+            QMessageBox.warning(self, "Notification Saved", message)
 
     def refresh_volunteer_dropdown(self):
         from data_manager import load_accounts
@@ -426,7 +488,6 @@ class AdminDashboard(QWidget):
         )
 
     def handle_delete_claim(self):
-        """Deletes selected reward claim."""
         row = self.list_claims.currentRow()
         claims = getattr(DataStore, "reward_claims", [])
 
@@ -447,7 +508,6 @@ class AdminDashboard(QWidget):
             QMessageBox.information(self, "Success", "Reward claim deleted successfully.")
 
     def handle_delete_report(self):
-        """Deletes selected waste report."""
         row = self.admin_reports_list.currentRow()
         if row < 0 or row >= len(DataStore.waste_reports):
             QMessageBox.warning(self, "Selection Error", "Please select a waste report to delete.")
@@ -468,7 +528,6 @@ class AdminDashboard(QWidget):
             QMessageBox.information(self, "Success", "Waste report deleted successfully.")
 
     def handle_add_schedule(self):
-        """Creates and publishes a new Cleanup Drive Schedule."""
         name = self.txt_drive_name.text().strip()
         dt = self.txt_drive_datetime.text().strip()
         loc = self.txt_drive_location.text().strip()
@@ -495,7 +554,6 @@ class AdminDashboard(QWidget):
         QMessageBox.information(self, "Success", f"Cleanup drive '{name}' scheduled and published to volunteers!")
 
     def refresh_schedules_list(self):
-        """Refreshes the list of scheduled cleanup drives."""
         self.list_schedules.clear()
         for drive in DataStore.cleanup_drives:
             self.list_schedules.addItem(
@@ -503,7 +561,6 @@ class AdminDashboard(QWidget):
             )
 
     def handle_delete_schedule(self):
-        """Deletes selected cleanup drive schedule."""
         row = self.list_schedules.currentRow()
         if row < 0 or row >= len(DataStore.cleanup_drives):
             QMessageBox.warning(self, "Selection Error", "Please select a cleanup drive schedule to delete.")

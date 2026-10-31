@@ -120,3 +120,16 @@ Progress 7: Forgot Password, Email Integration, and Account Email Support – PE
 - Updated account registration to check for duplicate usernames and email addresses.
 - Extended the account model and serialization logic to store and retrieve email addresses.
 - Added a background email-sending thread to avoid performing SMTP operations directly on the main GUI thread.
+
+
+Progress 8: System Notification and Email Announcements - PELLAZAR
+
+- Added an email notification feature that allows administrators to send system announcements directly 
+    to registered volunteers.
+- Improved the notification process so announcements can be sent through email without freezing the 
+    application interface.
+- Added success and failure messages to inform administrators about the result of email delivery.
+- Connected email announcements with the existing notification system so announcements are saved 
+    and can still be viewed within the application.
+- Improved the communication between administrators and volunteers by providing email notifications 
+    for important system announcements.
