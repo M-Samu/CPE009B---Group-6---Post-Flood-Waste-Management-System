@@ -1402,7 +1402,7 @@ class AdminManageUsersPage(QWidget):
     ):
         dialog = QDialog(self)
         dialog.setWindowTitle(title)
-        dialog.resize(600, 650)
+        dialog.resize(400, 400)
 
         layout = QVBoxLayout(dialog)
 

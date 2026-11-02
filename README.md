@@ -7,6 +7,7 @@ Requirements:
     Python 3.10+
     PyQt6
 
+
 Test Administrator:
     Username: admin
     Password: admin123
@@ -78,8 +79,7 @@ Progress 4: Admin Pointing Distributions and Viewing of Points - URBANO
     points to volunteers.
 - Administrators can select a volunteer's username before assigning points.
 - Updated the Rewards section to display the volunteer's total points at the top.
-- To be added: Level multipliers and reward costs.
-- The progress is not yet final.
+
 
 
 Progress 5: Points System Integration, Reward Redemption, and System Enhancements – MAPAS, RAMOS
@@ -191,3 +191,20 @@ Progress 10 - Public Feed and Clean-up Drive Management, Points Distribution Imp
     password-reset verification separate.
 - Continued improving the Volunteer Notifications section to display announcements received from administrators; 
     however, the dashboard notification display issue remains unresolved and requires further testing.
+
+
+Progress 11 - GUI Design and Color Scheme Refinement, and Interface Simplification - MAPAS, RAMOS, URBANO
+
+- Improved the overall graphical user interface by updating the application's color scheme and visual styling.
+- Enhanced the appearance of the Login and Registration interfaces to create a cleaner and more organized design.
+- Improved the Admin and Volunteer Dashboards by applying more consistent colors, layouts, and visual elements.
+- Refined the appearance of buttons, text fields, labels, checkboxes, and other interface components for better 
+    readability and usability.
+- Improved dashboard cards and content containers by applying consistent backgrounds, borders, rounded corners, 
+    and spacing.
+- Updated the navigation bar design with clearer button styles and active-tab indicators.
+Improved the appearance of list items and selected items to make information easier to read and distinguish.
+- Refined the styling of scroll areas and scrollbars for a cleaner browsing experience.
+Improved the appearance of dialog windows and dropdown selection fields to maintain consistency throughout 
+    the application.
+- Simplified the overall interface design while maintaining the existing system features and navigation structure.

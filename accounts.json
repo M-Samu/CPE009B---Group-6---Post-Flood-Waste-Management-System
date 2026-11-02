@@ -1,0 +1,38 @@
+[
+    {
+        "username": "admin",
+        "full_name": "System Administrator",
+        "password_hash": "8065739d8841d733217703468d317ffef173ee3c982b2b920987f040d66c011f",
+        "salt": "c1613c98b0f7354946401042fdd5e81d",
+        "role": "Admin",
+        "created_at": "2026-10-28 22:07:42",
+        "email": "pfwm.noreply@gmail.com",
+        "phone": "",
+        "date_of_birth": "",
+        "gender": "",
+        "address": "",
+        "emergency_contact_name": "",
+        "emergency_contact_phone": "",
+        "profile_picture": "",
+        "valid_id_path": "",
+        "points": 0
+    },
+    {
+        "username": "dustin",
+        "full_name": "dustinm",
+        "password_hash": "775af7a36f6bb2167c70fe4d2c2e54cce7216f35bd387974948710fd1878ddcf",
+        "salt": "b978c8c9c7b1ae3d03eae015f5ac823c",
+        "role": "Volunteer",
+        "created_at": "2026-10-28 22:09:03",
+        "email": "qdcmapas25@tip.edu.ph",
+        "phone": "",
+        "date_of_birth": "",
+        "gender": "",
+        "address": "",
+        "emergency_contact_name": "",
+        "emergency_contact_phone": "",
+        "profile_picture": "",
+        "valid_id_path": "",
+        "points": 0
+    }
+]

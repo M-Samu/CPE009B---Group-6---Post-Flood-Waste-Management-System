@@ -19,6 +19,7 @@ from password_reset_service import (
     confirm_and_update_password
 )
 
+
 # Login window class
 class LoginWindow(QWidget):
     # Initialize the login window
@@ -62,7 +63,7 @@ class LoginWindow(QWidget):
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # Create the welcome heading
-        heading = QLabel("Welcome back")
+        heading = QLabel("Welcome!")
         heading.setObjectName("pageHeading")
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
 

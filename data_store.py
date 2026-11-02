@@ -21,25 +21,10 @@ class DataStore:
 
     cleanup_drives = [
         {
-            "id": 1,
-            "name": "Barangay Clean-Up Drive Alpha",
-            "datetime": "Saturday, 8:00 AM",
-            "location": "Central Plaza",
-            "joined": False
         },
         {
-            "id": 2,
-            "name": "Post-Typhoon Coastal Clearing",
-            "datetime": "Sunday, 7:00 AM",
-            "location": "Coastal Road",
-            "joined": False
         },
         {
-            "id": 3,
-            "name": "Riverbank Plastic Segregation",
-            "datetime": "Next Wednesday, 1:00 PM",
-            "location": "River Spillway",
-            "joined": False
         }
     ]
 
