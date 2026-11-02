@@ -19,7 +19,6 @@ from password_reset_service import (
     confirm_and_update_password
 )
 
-
 # Login window class
 class LoginWindow(QWidget):
     # Initialize the login window

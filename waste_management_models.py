@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import hashlib
 import hmac
@@ -19,8 +19,8 @@ def hash_password(password: str, salt: str | None = None) -> tuple[str, str]:
 class Account:
     username: str
     full_name: str
-    password_hash: str
-    salt: str
+    _password_hash: str = field(repr=False)
+    _salt: str = field(repr=False)
     role: str = "Volunteer"
     created_at: str = ""
 
@@ -50,26 +50,26 @@ class Account:
         return cls(
             username=username.strip(),
             full_name=full_name.strip(),
-            password_hash=password_hash,
-            salt=salt,
+            _password_hash=password_hash,
+            _salt=salt,
             role=role,
             created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             email=email.strip(),
         )
 
     def verify_password(self, password: str) -> bool:
-        candidate_hash, _ = hash_password(password, self.salt)
+        candidate_hash, _ = hash_password(password, self._salt)
         return hmac.compare_digest(
             candidate_hash,
-            self.password_hash
+            self._password_hash
         )
 
     def to_dict(self) -> dict:
         return {
             "username": self.username,
             "full_name": self.full_name,
-            "password_hash": self.password_hash,
-            "salt": self.salt,
+            "password_hash": self._password_hash,
+            "salt": self._salt,
             "role": self.role,
             "created_at": self.created_at,
             "email": self.email,
@@ -89,8 +89,8 @@ class Account:
         return cls(
             username=data.get("username", ""),
             full_name=data.get("full_name", ""),
-            password_hash=data.get("password_hash", ""),
-            salt=data.get("salt", ""),
+            _password_hash=data.get("password_hash", ""),
+            _salt=data.get("salt", ""),
             role=data.get("role", "Volunteer"),
             created_at=data.get("created_at", ""),
             email=data.get("email", ""),

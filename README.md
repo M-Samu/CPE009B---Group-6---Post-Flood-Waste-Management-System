@@ -208,3 +208,21 @@ Improved the appearance of list items and selected items to make information eas
 Improved the appearance of dialog windows and dropdown selection fields to maintain consistency throughout 
     the application.
 - Simplified the overall interface design while maintaining the existing system features and navigation structure.
+
+
+Progress 12: Final Version – System Refinement and Feature Simplification – RAMOS, MAPAS, URBANO
+
+- Simplified the system by removing additional features that were no longer necessary for its main waste management 
+    functions.
+- Removed the Ticket Management system to reduce unnecessary functionality and simplify the overall application.
+- Removed the Admin My Notifications tab to simplify the administrator's notification management interface.
+- Removed the Volunteer Achievements tab to eliminate features that were not essential to the main system operations.
+- Removed the Public Feed feature, including public volunteer posts and interactions, to further simplify the application 
+    and focus on its essential waste management functions.
+- Further improved the system's user interface by refining the color scheme and overall visual appearance of the application.
+- Adjusted the point values of reward exchange items to provide updated redemption requirements for volunteers.
+- Reorganized the Admin Dashboard navigation by switching the positions of the Clean-up Schedule and Manage User Profile tabs.
+- Improved the Admin Review Reports section by allowing administrators to view submitted volunteer reports together with their 
+    corresponding uploaded images.
+- Refined the system's overall functionality and organization by retaining essential waste management features while removing 
+    unnecessary components.

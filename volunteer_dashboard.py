@@ -4,15 +4,14 @@ import re
 import shutil
 import time
 
-from PyQt6.QtCore import Qt, QRectF, QUrl
-from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QPixmap, QDesktopServices 
+from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtGui import QPainter, QColor, QPen, QFont, QPixmap
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QLabel, QPushButton, QStackedWidget, QFrame, QListWidget,
     QListWidgetItem, QDialog, QLineEdit, QTextEdit, QComboBox,
     QMessageBox, QScrollArea, QFileDialog, QFormLayout,
-    QDialogButtonBox, QGroupBox, QInputDialog, QApplication, 
-    QPlainTextEdit, QTabWidget, QAbstractItemView
+    QDialogButtonBox, QGroupBox, QInputDialog, QApplication
 )
 
 from waste_management_models import Session, hash_password
@@ -20,46 +19,8 @@ from app_utils import current_datetime
 from data_manager import load_accounts, save_accounts, find_account
 from data_store import DataStore
 
-def apply_smooth_scrolling(widget):
-    if isinstance(widget, QAbstractItemView):
-        widget.setVerticalScrollMode(
-            QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
-        widget.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        widget.verticalScrollBar().setSingleStep(12)
 
-    elif isinstance(widget, QScrollArea):
-        widget.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        widget.verticalScrollBar().setSingleStep(12)
-
-class ClickableImageLabel(QLabel):
-    """A small feed image that opens a larger preview when clicked."""
-    def __init__(self, image_path, parent=None):
-        super().__init__(parent)
-        self.image_path = str(image_path)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton and Path(self.image_path).is_file():
-            dialog = QDialog(self)
-            dialog.setWindowTitle("Image Preview")
-            layout = QVBoxLayout(dialog)
-            image = QLabel()
-            pixmap = QPixmap(self.image_path)
-            image.setPixmap(pixmap.scaled(1000, 750, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            image.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(image)
-            dialog.resize(min(1050, max(420, pixmap.width() + 30)), min(800, max(320, pixmap.height() + 30)))
-            dialog.exec()
-        super().mousePressEvent(event)
-
-# ==============================================================================
 # Custom Blue Progress Gauge
-# ==============================================================================
 class CircularProgressWidget(QWidget):
     def __init__(self, value=0, max_value=100, parent=None):
         super().__init__(parent)
@@ -105,6 +66,7 @@ class CircularProgressWidget(QWidget):
         )
 
 
+# Screen 1: Overview
 class VolunteerOverviewPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -125,7 +87,6 @@ class VolunteerOverviewPage(QWidget):
         task_layout = QVBoxLayout(self.task_card)
         task_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header Row with Date and "Clear Completed Task" Button
         task_header_layout = QHBoxLayout()
         today_str = datetime.now().strftime("%B %d, %Y")
         date_label = QLabel(today_str)
@@ -175,7 +136,7 @@ class VolunteerOverviewPage(QWidget):
         account = Session.current_account
         username = account.username if account else ""
         user_name = account.full_name if account else "Volunteer"
-        self.welcome_label.setText(f"Welcome, {user_name}")
+        self.welcome_label.setText(f"Welcome, {user_name}!")
 
         while self.tasks_container.count():
             item = self.tasks_container.takeAt(0)
@@ -294,7 +255,6 @@ class VolunteerOverviewPage(QWidget):
         self.refresh_data()
 
     def clear_completed_tasks(self):
-        """Clears completed tasks for the current logged-in volunteer (hides them for this account only)."""
         account = Session.current_account
         if not account:
             return
@@ -306,7 +266,6 @@ class VolunteerOverviewPage(QWidget):
         if not hasattr(DataStore, "cleared_tasks"):
             DataStore.cleared_tasks = {}
 
-        # Find task titles completed by current user
         completed_task_titles = []
         for record in DataStore.user_joined_tasks:
             if record.get("username") == username and record.get("completed", False):
@@ -346,12 +305,10 @@ class VolunteerOverviewPage(QWidget):
         self.refresh_data()
 
 
+# Screen 2: Waste Reports
 class VolunteerWasteReportsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        self.report_image_path = ""
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
@@ -359,10 +316,8 @@ class VolunteerWasteReportsPage(QWidget):
         card.setObjectName("volCard")
         card_layout = QVBoxLayout(card)
 
-        # Header
         header_layout = QHBoxLayout()
-
-        title = QLabel("Create Reports")
+        title = QLabel("Waste Reports")
         title.setObjectName("cardHeading")
 
         btn_create = QPushButton("Create Report")
@@ -375,372 +330,40 @@ class VolunteerWasteReportsPage(QWidget):
         header_layout.addWidget(btn_create)
         card_layout.addLayout(header_layout)
 
-        # Tabs
-        self.tabs = QTabWidget()
-
-        # My Reports tab
-        my_reports_page = QWidget()
-        my_reports_layout = QVBoxLayout(my_reports_page)
-
         self.reports_list = QListWidget()
         self.reports_list.setObjectName("volListWidget")
-        apply_smooth_scrolling(self.reports_list)
+        card_layout.addWidget(self.reports_list)
 
-        my_reports_layout.addWidget(self.reports_list)
-
-        self.tabs.addTab(my_reports_page, "My Reports")
-
-        card_layout.addWidget(self.tabs)
         layout.addWidget(card)
+        self.report_image_path = ""
 
     def choose_report_image(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Choose Waste Report Image",
-            "",
-            "Images (*.png *.jpg *.jpeg *.bmp)"
+            self, "Choose Waste Report Image", "", "Images (*.png *.jpg *.jpeg *.bmp)"
         )
-
         if not file_path:
             return
 
         source = Path(file_path)
-        target_dir = Path(__file__).resolve().parent / "data" / "report_images"
+        target_dir = Path("data") / "report_images"
         target_dir.mkdir(parents=True, exist_ok=True)
 
         account = Session.current_account
         username = account.username if account else "unknown"
         safe_username = re.sub(r"[^A-Za-z0-9_-]", "_", username)
-
-        target = target_dir / (
-            f"{safe_username}_{time.time_ns()}{source.suffix.lower()}"
-        )
+        target = target_dir / f"{safe_username}_{time.time_ns()}{source.suffix.lower()}"
 
         try:
             shutil.copy2(source, target)
             self.report_image_path = str(target.resolve())
-
-            QMessageBox.information(
-                self,
-                "Image Selected",
-                "The report image has been uploaded."
-            )
-
+            QMessageBox.information(self, "Image Selected", "The report image has been uploaded.")
         except OSError as error:
-            QMessageBox.critical(
-                self,
-                "Upload Failed",
-                f"Unable to save the image:\n{error}"
-            )
+            QMessageBox.critical(self, "Upload Failed", f"Unable to save the image:\n{error}")
 
     def refresh_data(self):
-        """Refresh the logged-in volunteer's own reports."""
         self.reports_list.clear()
-
-        account = Session.current_account
-        if account is None:
-            return
-
-        records = getattr(DataStore, "report_records", [])
-
-        for index, record in enumerate(records):
-            if not isinstance(record, dict):
-                continue
-
-            if record.get("username") != account.username:
-                continue
-
-            if index >= len(DataStore.waste_reports):
-                continue
-
-            report = DataStore.waste_reports[index]
-            moderation = DataStore.get_report_moderation(index) or {}
-            status = moderation.get("status", "Pending")
-
-            self.reports_list.addItem(
-                QListWidgetItem(f"{report}\nStatus: {status}")
-            )
-
-        if self.reports_list.count() == 0:
-            self.reports_list.addItem(
-                "You have not submitted any waste reports yet."
-            )
-
-    def refresh_public_feed(self):
-        """Show only approved reports in the public feed."""
-        self.public_feed_list.clear()
-
-        account = Session.current_account
-        if account is None:
-            self.public_feed_list.addItem("Please log in to view the public feed.")
-            return
-
-        try:
-            approved_reports = DataStore.get_approved_report_records()
-        except (AttributeError, TypeError, ValueError) as error:
-            QMessageBox.warning(
-                self,
-                "Feed Error",
-                f"Unable to load the public feed:\n{error}"
-            )
-            return
-
-        if not approved_reports:
-            self.public_feed_list.addItem(
-                "No approved waste reports are available yet."
-            )
-            return
-
-        for report_index, report_text, record in approved_reports:
-            self._add_public_report_item(
-                report_index,
-                report_text,
-                record,
-                account
-            )
-
-    def _add_public_report_item(
-        self,
-        report_index,
-        report_text,
-        record,
-        account
-    ):
-        """Create one public-feed entry with likes and comments."""
-        author_name = record.get("full_name") or record.get("username", "Volunteer")
-        username = record.get("username", "unknown")
-        location = record.get("location", "Not specified")
-        category = record.get("report_type", "General")
-        details = record.get("details", "")
-        submitted_at = record.get("submitted_at", "")
-        image_path = record.get("image_path", "")
-
-        item_widget = QWidget()
-        item_layout = QVBoxLayout(item_widget)
-        item_layout.setContentsMargins(10, 10, 10, 10)
-
-        # Report author
-        author_button = QPushButton(f"{author_name}  (@{username})")
-        author_button.setFlat(True)
-        author_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        author_button.clicked.connect(
-            lambda checked=False, user=username:
-                self.open_public_volunteer_profile(user)
-        )
-        item_layout.addWidget(author_button)
-
-        # Report details
-        item_layout.addWidget(QLabel(f"Location: {location}"))
-        item_layout.addWidget(QLabel(f"Category: {category}"))
-
-        if submitted_at:
-            item_layout.addWidget(QLabel(f"Submitted: {submitted_at}"))
-
-        details_label = QLabel(details or report_text)
-        details_label.setWordWrap(True)
-        item_layout.addWidget(details_label)
-
-        # Report image
-        if image_path and Path(image_path).is_file():
-            image_label = ClickableImageLabel(image_path)
-            pixmap = QPixmap(image_path)
-
-            if not pixmap.isNull():
-                image_label.setPixmap(
-                    pixmap.scaled(
-                        360,
-                        240,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation
-                    )
-                )
-                item_layout.addWidget(image_label)
-
-        # Likes
-        likes = record.get("likes", [])
-        if not isinstance(likes, list):
-            likes = []
-
-        already_liked = any(
-            isinstance(name, str)
-            and name.casefold() == account.username.casefold()
-            for name in likes
-        )
-
-        btn_like = QPushButton(
-            f"{'Unlike' if already_liked else 'Like'} ({len(likes)})"
-        )
-        btn_like.clicked.connect(
-            lambda checked=False, idx=report_index:
-                self.handle_like_report(idx)
-        )
-        item_layout.addWidget(btn_like)
-
-        # Existing comments
-        comments_label = QLabel("Comments")
-        comments_label.setStyleSheet("font-weight: bold;")
-        item_layout.addWidget(comments_label)
-
-        comments = record.get("comments", [])
-        if not isinstance(comments, list):
-            comments = []
-
-        if comments:
-            for comment in comments:
-                if not isinstance(comment, dict):
-                    continue
-
-                comment_name = comment.get("full_name", "Volunteer")
-                comment_text = comment.get("text", "")
-                comment_date = comment.get("submitted_at", "")
-
-                comment_label = QLabel(
-                    f"{comment_name}: {comment_text}"
-                    + (f"\n{comment_date}" if comment_date else "")
-                )
-                comment_label.setWordWrap(True)
-                item_layout.addWidget(comment_label)
-        else:
-            item_layout.addWidget(QLabel("No comments yet."))
-
-        # Add a comment
-        comment_input = QLineEdit()
-        comment_input.setPlaceholderText("Write a comment...")
-
-        btn_comment = QPushButton("Post Comment")
-        btn_comment.clicked.connect(
-            lambda checked=False,
-                   idx=report_index,
-                   field=comment_input:
-                self.handle_add_comment(idx, field)
-        )
-
-        item_layout.addWidget(comment_input)
-        item_layout.addWidget(btn_comment)
-
-        # Put each report inside a list item.
-        list_item = QListWidgetItem()
-        list_item.setSizeHint(item_widget.sizeHint())
-
-        self.public_feed_list.addItem(list_item)
-        self.public_feed_list.setItemWidget(list_item, item_widget)
-
-    def handle_like_report(self, report_index):
-        account = Session.current_account
-        if account is None:
-            QMessageBox.warning(self, "Login Required", "Please log in first.")
-            return
-
-        try:
-            DataStore.toggle_report_like(report_index, account.username)
-            self.refresh_public_feed()
-
-        except (AttributeError, IndexError, ValueError, OSError) as error:
-            QMessageBox.warning(
-                self,
-                "Like Failed",
-                f"Unable to update the like:\n{error}"
-            )
-
-    def handle_add_comment(self, report_index, comment_input):
-        account = Session.current_account
-        if account is None:
-            QMessageBox.warning(self, "Login Required", "Please log in first.")
-            return
-
-        comment_text = comment_input.text().strip()
-
-        if not comment_text:
-            QMessageBox.warning(
-                self,
-                "Empty Comment",
-                "Please write a comment before posting."
-            )
-            return
-
-        try:
-            DataStore.add_report_comment(
-                report_index,
-                account.username,
-                account.full_name,
-                comment_text
-            )
-            self.refresh_public_feed()
-
-        except (AttributeError, IndexError, ValueError, OSError) as error:
-            QMessageBox.warning(
-                self,
-                "Comment Failed",
-                f"Unable to post the comment:\n{error}"
-            )
-
-    def open_public_volunteer_profile(self, username):
-        """Display basic public information only."""
-        record = next(
-            (
-                item for item in getattr(DataStore, "report_records", [])
-                if isinstance(item, dict)
-                and item.get("username", "").casefold() == username.casefold()
-            ),
-            None
-        )
-
-        account = find_account(username)
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Volunteer Profile")
-        dialog.setMinimumWidth(300)
-
-        profile_layout = QVBoxLayout(dialog)
-
-        full_name = (
-            record.get("full_name")
-            if record else None
-        ) or (account.full_name if account else "Volunteer")
-
-        name_label = QLabel(full_name)
-        name_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        profile_layout.addWidget(name_label)
-
-        profile_layout.addWidget(QLabel(f"Username: @{username}"))
-
-        # Display a profile picture only if the account has one.
-        picture_path = (
-            getattr(account, "profile_picture", "") or ""
-        ) if account else ""
-
-        if picture_path:
-            picture_file = Path(picture_path)
-
-            if not picture_file.is_absolute():
-                picture_file = (
-                    Path(__file__).resolve().parent / picture_file
-                )
-
-            if picture_file.is_file():
-                picture_label = QLabel()
-                pixmap = QPixmap(str(picture_file))
-
-                if not pixmap.isNull():
-                    picture_label.setPixmap(
-                        pixmap.scaled(
-                            120,
-                            120,
-                            Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.SmoothTransformation
-                        )
-                    )
-                    profile_layout.addWidget(picture_label)
-
-        profile_layout.addWidget(
-            QLabel("Volunteer in the Post-Flood Waste Management System")
-        )
-
-        btn_close = QPushButton("Close")
-        btn_close.clicked.connect(dialog.accept)
-        profile_layout.addWidget(btn_close)
-
-        dialog.exec()
+        for report in DataStore.waste_reports:
+            self.reports_list.addItem(QListWidgetItem(report))
 
     def open_create_report_dialog(self):
         dialog = QDialog(self)
@@ -754,12 +377,7 @@ class VolunteerWasteReportsPage(QWidget):
 
         lbl_type = QLabel("Waste Category:")
         cmb_type = QComboBox()
-        cmb_type.addItems([
-            "Plastic & Bottles",
-            "Flood Mud / Organic",
-            "Hazardous / E-Waste",
-            "Heavy Debris"
-        ])
+        cmb_type.addItems(["Plastic & Bottles", "Flood Mud / Organic", "Hazardous / E-Waste", "Heavy Debris"])
 
         lbl_details = QLabel("Description:")
         txt_details = QTextEdit()
@@ -773,27 +391,18 @@ class VolunteerWasteReportsPage(QWidget):
             report_type = cmb_type.currentText()
 
             if not loc:
-                QMessageBox.warning(
-                    dialog, "Input Error", "Please enter a location."
-                )
+                QMessageBox.warning(dialog, "Input Error", "Please enter a location.")
                 return
 
             account = Session.current_account
             if account is None:
-                QMessageBox.warning(
-                    dialog,
-                    "Login Required",
-                    "Please log in before submitting a report."
-                )
+                QMessageBox.warning(dialog, "Login Required", "Please log in before submitting a report.")
                 return
 
             submitted_at = current_datetime()
-            report_entry = (
-                f"📍 {loc} - {report_type} (Submitted: {submitted_at})"
-            )
+            report_entry = f"{loc} - {report_type} (Submitted: {submitted_at})"
 
             DataStore.waste_reports.append(report_entry)
-
             if not hasattr(DataStore, "report_records"):
                 DataStore.report_records = []
 
@@ -805,42 +414,12 @@ class VolunteerWasteReportsPage(QWidget):
                 "details": details,
                 "image_path": self.report_image_path,
                 "submitted_at": submitted_at,
-                "likes": [],
-                "comments": [],
             })
 
-            try:
-                DataStore.save()
-            except (OSError, TypeError, ValueError) as error:
-                # Remove the report entries added by this submission.
-                if DataStore.waste_reports and DataStore.waste_reports[-1] == report_entry:
-                    DataStore.waste_reports.pop()
-
-                if (
-                    DataStore.report_records
-                    and DataStore.report_records[-1].get("username") == account.username
-                    and DataStore.report_records[-1].get("submitted_at") == submitted_at
-                ):
-                    DataStore.report_records.pop()
-
-                QMessageBox.critical(
-                    dialog,
-                    "Save Failed",
-                    f"Unable to save the report:\n{error}"
-                )
-                return
-
+            DataStore.save()
             self.refresh_data()
 
-            if hasattr(self, "public_feed_list"):
-                self.refresh_public_feed()
-
-            QMessageBox.information(
-                dialog,
-                "Success",
-                "Waste report submitted successfully!"
-            )
-
+            QMessageBox.information(dialog, "Success", "Waste report submitted successfully!")
             self.report_image_path = ""
             dialog.accept()
 
@@ -852,270 +431,128 @@ class VolunteerWasteReportsPage(QWidget):
         d_layout.addWidget(cmb_type)
         d_layout.addWidget(lbl_details)
         d_layout.addWidget(txt_details)
+        d_layout.addWidget(btn_submit)
 
         btn_upload_image = QPushButton("Upload Report Image")
         btn_upload_image.clicked.connect(self.choose_report_image)
         d_layout.addWidget(btn_upload_image)
 
-        d_layout.addWidget(btn_submit)
         dialog.exec()
 
-# ==============================================================================
-# Screen 3: PublicFeedPage
-# ==============================================================================
 
-class VolunteerPublicFeedPage(VolunteerWasteReportsPage):
-    """Public feed with separate approved waste-report and clean-up-drive feeds."""
-    def __init__(self, parent=None):
-        QWidget.__init__(self, parent)
-        layout = QVBoxLayout(self)
-        header = QHBoxLayout()
-        title = QLabel("Public Feed")
-        title.setObjectName("cardHeading")
-        btn_refresh = QPushButton("Refresh Feed")
-        btn_refresh.setCursor(Qt.CursorShape.PointingHandCursor)
-        btn_refresh.clicked.connect(self.refresh_all_feeds)
-        header.addWidget(title); header.addStretch(); header.addWidget(btn_refresh)
-        layout.addLayout(header)
-        self.tabs = QTabWidget()
-        waste_page = QWidget(); waste_layout = QVBoxLayout(waste_page)
-        self.public_feed_list = QListWidget(); self.public_feed_list.setObjectName("volListWidget"); self.public_feed_list.setSpacing(8)
-        apply_smooth_scrolling(self.public_feed_list); waste_layout.addWidget(self.public_feed_list)
-        cleanup_page = QWidget(); cleanup_layout = QVBoxLayout(cleanup_page)
-        self.cleanup_feed_list = QListWidget(); self.cleanup_feed_list.setObjectName("volListWidget"); self.cleanup_feed_list.setSpacing(8)
-        apply_smooth_scrolling(self.cleanup_feed_list); cleanup_layout.addWidget(self.cleanup_feed_list)
-        self.tabs.addTab(waste_page, "Waste Report Feed")
-        self.tabs.addTab(cleanup_page, "Clean-up Drive Feed")
-        self.tabs.currentChanged.connect(lambda _index: self.refresh_all_feeds())
-        layout.addWidget(self.tabs, 1)
-        self.refresh_all_feeds()
-
-    def refresh_all_feeds(self):
-        self.refresh_public_feed()
-        self.refresh_cleanup_public_feed()
-
-    def refresh_cleanup_public_feed(self):
-        self.cleanup_feed_list.clear()
-        account = Session.current_account
-        if account is None:
-            self.cleanup_feed_list.addItem("Please log in to view the public feed.")
-            return
-        try:
-            approved = DataStore.get_approved_cleanup_drive_reports()
-        except Exception as error:
-            self.cleanup_feed_list.addItem(f"Unable to load clean-up drive feed: {error}")
-            return
-        if not approved:
-            self.cleanup_feed_list.addItem("No approved clean-up drive reports are available yet.")
-            return
-        for index, record in approved:
-            widget = QWidget(); box = QVBoxLayout(widget)
-            author = QPushButton(f"{record.get('full_name', record.get('username','Volunteer'))} (@{record.get('username','')})")
-            author.setFlat(True); author.clicked.connect(lambda checked=False, u=record.get('username',''): self.open_public_volunteer_profile(u))
-            box.addWidget(author)
-            box.addWidget(QLabel(f"Clean-up Drive: {record.get('drive_name','Clean-up Drive')}"))
-            box.addWidget(QLabel(f"Submitted: {record.get('submitted_at','')}"))
-            details = QLabel(record.get('details','')); details.setWordWrap(True); box.addWidget(details)
-            path = record.get('image_path','')
-            if path and Path(path).is_file():
-                image = ClickableImageLabel(path); pix = QPixmap(path)
-                if not pix.isNull(): image.setPixmap(pix.scaled(360, 240, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)); box.addWidget(image)
-            likes = record.get('likes', []) if isinstance(record.get('likes', []), list) else []
-            liked = any(isinstance(u, str) and u.casefold() == account.username.casefold() for u in likes)
-            btn_like = QPushButton(f"{'Unlike' if liked else 'Like'} ({len(likes)})")
-            btn_like.clicked.connect(lambda checked=False, i=index: self.handle_like_cleanup_report(i))
-            box.addWidget(btn_like); box.addWidget(QLabel("Comments"))
-            comments = record.get('comments', []) if isinstance(record.get('comments', []), list) else []
-            for comment in comments:
-                if isinstance(comment, dict):
-                    label = QLabel(f"{comment.get('full_name','Volunteer')}: {comment.get('text','')}")
-                    label.setWordWrap(True); box.addWidget(label)
-            field = QLineEdit(); field.setPlaceholderText("Write a comment..."); box.addWidget(field)
-            btn_comment = QPushButton("Post Comment"); btn_comment.clicked.connect(lambda checked=False, i=index, f=field: self.handle_comment_cleanup_report(i, f)); box.addWidget(btn_comment)
-            item = QListWidgetItem(); item.setSizeHint(widget.sizeHint()); self.cleanup_feed_list.addItem(item); self.cleanup_feed_list.setItemWidget(item, widget)
-
-    def handle_like_cleanup_report(self, index):
-        account = Session.current_account
-        if account is None: return
-        try:
-            DataStore.toggle_cleanup_drive_report_like(index, account.username)
-            self.refresh_cleanup_public_feed()
-        except Exception as error:
-            QMessageBox.warning(self, "Like Failed", f"Unable to update the like:\n{error}")
-
-    def handle_comment_cleanup_report(self, index, field):
-        account = Session.current_account
-        if account is None: return
-        text = field.text().strip()
-        if not text:
-            QMessageBox.warning(self, "Empty Comment", "Please write a comment before posting."); return
-        try:
-            DataStore.add_cleanup_drive_report_comment(index, account.username, account.full_name, text)
-            self.refresh_cleanup_public_feed()
-        except Exception as error:
-            QMessageBox.warning(self, "Comment Failed", f"Unable to post the comment:\n{error}")
-
+# Screen 3: Scheduled Cleanup Drives
 class VolunteerScheduledDrivesPage(QWidget):
-    """Clean-up Drive page with schedule joining and attendance-proof reports."""
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
-        self.tabs = QTabWidget()
 
-        schedules_page = QWidget()
-        schedules_layout = QVBoxLayout(schedules_page)
         self.card = QFrame()
         self.card.setObjectName("volCard")
         self.card_layout = QVBoxLayout(self.card)
-        title = QLabel("Clean-up Schedules")
+
+        title = QLabel("Scheduled Cleanup Drives")
         title.setObjectName("cardHeading")
         self.card_layout.addWidget(title)
+
         self.drives_container = QVBoxLayout()
         self.card_layout.addLayout(self.drives_container)
         self.card_layout.addStretch()
-        schedules_layout.addWidget(self.card)
-        self.tabs.addTab(schedules_page, "Clean-up Schedules")
 
-        reports_page = QWidget()
-        reports_layout = QVBoxLayout(reports_page)
-        reports_card = QFrame()
-        reports_card.setObjectName("volCard")
-        reports_card_layout = QVBoxLayout(reports_card)
-        reports_card_layout.addWidget(QLabel("Submit Clean-up Drive Attendance Proof"))
-        self.cmb_cleanup_drive = QComboBox()
-        self.txt_cleanup_details = QTextEdit()
-        self.txt_cleanup_details.setPlaceholderText("Describe your participation and clean-up work...")
-        self.txt_cleanup_details.setMaximumHeight(100)
-        self.cleanup_image_path = ""
-        btn_upload = QPushButton("Upload Attendance Proof Image")
-        btn_upload.clicked.connect(self.choose_cleanup_proof)
-        btn_submit = QPushButton("Submit Clean-up Drive Report")
-        btn_submit.setObjectName("primaryButton")
-        btn_submit.clicked.connect(self.submit_cleanup_report)
-        self.cleanup_reports_list = QListWidget()
-        apply_smooth_scrolling(self.cleanup_reports_list)
-        reports_card_layout.addWidget(QLabel("Select Clean-up Drive:"))
-        reports_card_layout.addWidget(self.cmb_cleanup_drive)
-        reports_card_layout.addWidget(self.txt_cleanup_details)
-        reports_card_layout.addWidget(btn_upload)
-        reports_card_layout.addWidget(btn_submit)
-        reports_card_layout.addWidget(QLabel("My Clean-up Drive Reports"))
-        reports_card_layout.addWidget(self.cleanup_reports_list)
-        reports_layout.addWidget(reports_card)
-        self.tabs.addTab(reports_page, "Clean-up Drive Reports")
-        layout.addWidget(self.tabs)
-        self.refresh_data()
-
-    def choose_cleanup_proof(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Attendance Proof", "", "Images (*.png *.jpg *.jpeg *.bmp)")
-        if not file_path:
-            return
-        account = Session.current_account
-        username = re.sub(r"[^A-Za-z0-9_-]", "_", account.username if account else "unknown")
-        source = Path(file_path)
-        target_dir = Path(__file__).resolve().parent / "data" / "cleanup_drive_images"
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / f"{username}_{time.time_ns()}{source.suffix.lower()}"
-        try:
-            shutil.copy2(source, target)
-            self.cleanup_image_path = str(target.resolve())
-            QMessageBox.information(self, "Image Selected", "Attendance proof image uploaded.")
-        except OSError as error:
-            QMessageBox.critical(self, "Upload Failed", f"Could not save the image:\n{error}")
-
-    def submit_cleanup_report(self):
-        account = Session.current_account
-        if account is None:
-            QMessageBox.warning(self, "Login Required", "Please log in first.")
-            return
-        drive_id = self.cmb_cleanup_drive.currentData()
-        drive = next((d for d in DataStore.cleanup_drives if isinstance(d, dict) and d.get("id") == drive_id), None)
-        details = self.txt_cleanup_details.toPlainText().strip()
-        if drive is None:
-            QMessageBox.warning(self, "Select Drive", "Please select a clean-up drive.")
-            return
-        if not details or not self.cleanup_image_path:
-            QMessageBox.warning(self, "Missing Information", "Add a description and upload proof of attendance.")
-            return
-        joined_by = drive.setdefault("joined_by", [])
-        if not any(str(u).casefold() == account.username.casefold() for u in joined_by):
-            QMessageBox.warning(self, "Not Joined", "Join this clean-up drive before submitting attendance proof.")
-            return
-        DataStore.cleanup_drive_reports.append({
-            "username": account.username, "full_name": account.full_name,
-            "drive_id": drive.get("id"), "drive_name": drive.get("name", "Clean-up Drive"),
-            "details": details, "image_path": self.cleanup_image_path,
-            "submitted_at": current_datetime(),
-        })
-        try:
-            DataStore.save()
-        except Exception as error:
-            DataStore.cleanup_drive_reports.pop()
-            QMessageBox.critical(self, "Save Failed", f"Could not save the report:\n{error}")
-            return
-        self.cleanup_image_path = ""
-        self.txt_cleanup_details.clear()
-        self.refresh_data()
-        QMessageBox.information(self, "Submitted", "Clean-up drive report submitted for admin review.")
+        layout.addWidget(self.card)
 
     def refresh_data(self):
         while self.drives_container.count():
             item = self.drives_container.takeAt(0)
-            if item.widget(): item.widget().deleteLater()
-        self.cmb_cleanup_drive.clear()
+            if item.widget():
+                item.widget().deleteLater()
+
+        account = Session.current_account
+        username = account.username if account else ""
+
         for drive in DataStore.cleanup_drives:
-            if not isinstance(drive, dict): continue
-            self.cmb_cleanup_drive.addItem(f"{drive.get('name','Clean-up Drive')} — {drive.get('datetime','')}", drive.get("id"))
-            box = QFrame(); box.setObjectName("driveItemBox"); row = QHBoxLayout(box)
-            info = QVBoxLayout()
-            name = QLabel(drive.get("name", "Clean-up Drive")); name.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
-            meta = QLabel(f"Date: {drive.get('datetime','')} | Location: {drive.get('location','')}"); meta.setWordWrap(True)
-            info.addWidget(name); info.addWidget(meta); row.addLayout(info); row.addStretch()
-            account = Session.current_account; joined_by = drive.setdefault("joined_by", [])
-            joined = account is not None and any(isinstance(u, str) and u.casefold() == account.username.casefold() for u in joined_by)
-            btn = QPushButton("Cancel Join" if joined else "Join Drive"); btn.setObjectName("primaryButton")
-            btn.setEnabled(account is not None)
-            def make_join_handler(d=drive, was_joined=joined):
+            drive_box = QFrame()
+            drive_box.setObjectName("driveItemBox")
+            i_layout = QHBoxLayout(drive_box)
+
+            info_v = QVBoxLayout()
+            lbl_name = QLabel(drive.get("name", ""))
+            lbl_name.setStyleSheet("font-weight: bold; font-size: 14px; border: none;")
+            lbl_meta = QLabel(f"Date: {drive.get('datetime', '')} | Location: {drive.get('location', '')}")
+            lbl_meta.setStyleSheet("color: #64748b; font-size: 12px; border: none;")
+            info_v.addWidget(lbl_name)
+            info_v.addWidget(lbl_meta)
+
+            joined_users = drive.get("joined_users", [])
+            is_joined = username in joined_users if username else False
+
+            btn_join = QPushButton("Joined" if is_joined else "Join Drive")
+            btn_join.setEnabled(not is_joined)
+            btn_join.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_join.setObjectName("primaryButton")
+             
+            def make_join_handler(d=drive):
                 def handler():
                     acc = Session.current_account
-                    if acc is None:
-                        QMessageBox.warning(self, "Login Required", "Please log in first."); return
-                    if was_joined:
-                        answer = QMessageBox.question(self, "Cancel Clean-up Drive", f"Cancel your participation in '{d.get('name','Clean-up Drive')}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
-                        if answer != QMessageBox.StandardButton.Yes: return
-                        users = d.setdefault("joined_by", [])
-                        d["joined_by"] = [u for u in users if not (isinstance(u, str) and u.casefold() == acc.username.casefold())]
-                        try: DataStore.save()
-                        except Exception as error:
-                            QMessageBox.critical(self, "Save Failed", f"Could not cancel participation:\n{error}"); return
-                        QMessageBox.information(self, "Participation Cancelled", "You are no longer registered for this clean-up drive.")
-                        self.refresh_data(); return
-                    if not acc.valid_id_path or not Path(acc.valid_id_path).is_file():
-                        QMessageBox.warning(self, "Valid ID Required", "Upload a valid ID in your profile before joining a clean-up drive."); return
-                    answer = QMessageBox.question(self, "Join Clean-up Drive", f"Do you want to join '{d.get('name','Clean-up Drive')}'?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
-                    if answer != QMessageBox.StandardButton.Yes: return
-                    users = d.setdefault("joined_by", [])
-                    if not any(isinstance(u, str) and u.casefold() == acc.username.casefold() for u in users): users.append(acc.username)
-                    try: DataStore.save()
-                    except Exception as error:
-                        d["joined_by"] = [u for u in users if not (isinstance(u, str) and u.casefold() == acc.username.casefold())]
-                        QMessageBox.critical(self, "Save Failed", f"Could not save participation:\n{error}"); return
-                    QMessageBox.information(self, "Joined Successfully", "You have joined this clean-up drive.")
+                    if acc is None or not acc.valid_id_path or not Path(acc.valid_id_path).is_file():
+                        QMessageBox.warning(
+                            self, "Valid ID Required",
+                            "Please upload a valid ID in your profile before joining a cleanup drive."
+                        )
+                        return
+
+                    if "joined_users" not in d or not isinstance(d["joined_users"], list):
+                        d["joined_users"] = []
+
+                    if acc.username not in d["joined_users"]:
+                        d["joined_users"].append(acc.username)
+
+                    if "joined" in d:
+                        del d["joined"]
+
+                    task_title = f"Task: {d['name']} ({d['datetime']} @ {d['location']})"
+                    
+                    if task_title not in DataStore.tasks:
+                        DataStore.tasks.append(task_title)
+                    
+                    task_idx = DataStore.tasks.index(task_title)
+
+                    if not hasattr(DataStore, "user_joined_tasks"):
+                        DataStore.user_joined_tasks = []
+
+                    already_joined = any(
+                        j.get("username") == acc.username and (j.get("task_title") == task_title or j.get("task_id") == task_idx)
+                        for j in DataStore.user_joined_tasks
+                    )
+
+                    if not already_joined:
+                        DataStore.user_joined_tasks.append({
+                            "username": acc.username,
+                            "task_id": task_idx,
+                            "task_title": task_title,
+                            "joined_at": current_datetime(),
+                            "completed": False
+                        })
+
+                    DataStore.save()
+                    QMessageBox.information(
+                        self, "Cleanup Drive Joined",
+                        f"You joined '{d['name']}'!\n\nThis schedule has been automatically added to your Task list on the Home Overview page."
+                    )
                     self.refresh_data()
+
                 return handler
-            btn.clicked.connect(make_join_handler()); row.addWidget(btn); self.drives_container.addWidget(box)
-        self.cleanup_reports_list.clear()
-        account = Session.current_account
-        for i, report in enumerate(DataStore.cleanup_drive_reports):
-            if account and isinstance(report, dict) and str(report.get("username", "")).casefold() == account.username.casefold():
-                status = DataStore.cleanup_drive_report_moderation[i].get("status", "Pending") if i < len(DataStore.cleanup_drive_report_moderation) else "Pending"
-                self.cleanup_reports_list.addItem(f"[{status}] {report.get('drive_name','Clean-up Drive')} — {report.get('submitted_at','')}\n{report.get('details','')}")
+
+            btn_join.clicked.connect(make_join_handler())
+
+            i_layout.addLayout(info_v)
+            i_layout.addStretch()
+            i_layout.addWidget(btn_join)
+
+            self.drives_container.addWidget(drive_box)
 
 
-# ==============================================================================
-# Screen 5: Rewards Page (With Live Pickup Tracker)
-# ==============================================================================
+# Screen 4: Rewards Page
 class VolunteerRewardsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1139,16 +576,15 @@ class VolunteerRewardsPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        apply_smooth_scrolling(scroll)
 
         grid_widget = QWidget()
         grid = QGridLayout(grid_widget)
         grid.setSpacing(10)
 
         reward_items = [
-            "Eco Bag (2 points)", "Water Bottle (1 point)", "Gloves Kit (3 points)", "1KG Rice (5 points)"
+            "Bottled Water (1 point)", "Gloves Kit (5 points)", "1KG Rice (25 points)", "Canned Goods (35 points)"
         ]
-        item_price = [2, 1, 3, 5]
+        item_price = [1, 5, 25, 35]
 
         idx = 0
         for row in range(2):
@@ -1183,7 +619,6 @@ class VolunteerRewardsPage(QWidget):
         claims_layout = QVBoxLayout(claims_group)
 
         self.user_claims_list = QListWidget()
-        apply_smooth_scrolling(self.user_claims_list)
         self.user_claims_list.setFixedHeight(120)
         self.user_claims_list.setStyleSheet("QListWidget { border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; }")
         claims_layout.addWidget(self.user_claims_list)
@@ -1219,7 +654,7 @@ class VolunteerRewardsPage(QWidget):
 
         for claim in reversed(user_claims):
             status_text = (
-                f" {claim['item_name']} | Status: [{claim['status']}]\n"
+                f"📦 {claim['item_name']} | Status: [{claim['status']}]\n"
                 f"   Pickup Location & Info: {claim['pickup_info']}"
             )
             self.user_claims_list.addItem(status_text)
@@ -1230,119 +665,53 @@ class VolunteerRewardsPage(QWidget):
 
     def claim_reward(self, item_name, item_cost):
         account = Session.current_account
-
         if account is None:
-            QMessageBox.warning(
-                self, "Login Required",
-                "Please log in to claim a reward."
-            )
+            QMessageBox.warning(self, "Login Required", "Please log in to claim a reward.")
             return
 
-        try:
+        updated_account = find_account(account.username)
+        if updated_account:
+            account = updated_account
+            Session.current_account = account
+
+        if account.points >= item_cost:
+            account.points -= item_cost
+
             accounts = load_accounts()
-            saved_account = next(
-                (
-                    item for item in accounts
-                    if item.username.casefold()
-                    == account.username.casefold()
-                ),
-                None
-            )
+            for saved_account in accounts:
+                if saved_account.username == account.username:
+                    saved_account.points = account.points
+                    break
+            save_accounts(accounts)
 
-            if saved_account is None:
-                QMessageBox.warning(
-                    self, "Account Not Found",
-                    "Your saved account could not be found."
-                )
-                return
-
-            old_points = saved_account.points
-
-            if old_points < item_cost:
-                QMessageBox.warning(
-                    self, "Insufficient Points",
-                    "You don't have enough points to claim this reward."
-                )
-                return
-
-            old_claims = list(
-                getattr(DataStore, "reward_claims", [])
-            )
-
-            saved_account.points = old_points - item_cost
+            if not hasattr(DataStore, "reward_claims"):
+                DataStore.reward_claims = []
 
             claim_record = {
-                "id": max(
-                    (
-                        claim.get("id", 0)
-                        for claim in old_claims
-                        if isinstance(claim, dict)
-                        and isinstance(claim.get("id"), int)
-                    ),
-                    default=0
-                ) + 1,
-                "username": saved_account.username,
-                "full_name": saved_account.full_name,
+                "id": len(DataStore.reward_claims) + 1,
+                "username": account.username,
+                "full_name": account.full_name,
                 "item_name": item_name,
                 "points_spent": item_cost,
                 "status": "Pending Admin Release",
-                "pickup_info": (
-                    "Awaiting confirmation from Admin on "
-                    "nearest district office release."
-                ),
+                "pickup_info": "Awaiting confirmation from Admin on nearest district office release.",
                 "claimed_at": current_datetime()
             }
+            DataStore.reward_claims.append(claim_record)
 
-            DataStore.reward_claims = old_claims + [claim_record]
-
-            save_accounts(accounts)
             DataStore.save()
-
-            Session.current_account = saved_account
             self.refresh_user_points()
 
-        except Exception as error:
-            # Restore in-memory claim data and points.
-            if "old_claims" in locals():
-                DataStore.reward_claims = old_claims
-
-            if "old_points" in locals():
-                try:
-                    rollback_accounts = load_accounts()
-                    rollback_account = next(
-                        (
-                            item for item in rollback_accounts
-                            if item.username.casefold()
-                            == account.username.casefold()
-                        ),
-                        None
-                    )
-                    if rollback_account is not None:
-                        rollback_account.points = old_points
-                        save_accounts(rollback_accounts)
-                        Session.current_account = rollback_account
-                except Exception:
-                    pass
-
-            self.refresh_user_points()
-            QMessageBox.critical(
-                self, "Reward Claim Failed",
-                "Unable to save your reward claim. "
-                "Please check your points and claim status before "
-                f"trying again.\n\nDetails: {error}"
+            QMessageBox.information(
+                self, "Reward Claimed",
+                f"You claimed '{item_name}'!\n\n"
+                "The Admin has been notified. Check the status box below for item release details."
             )
-            return
+        else:
+            QMessageBox.warning(self, "Insufficient Points", "You don't have enough points to claim this reward.")
 
-        QMessageBox.information(
-            self, "Reward Claimed",
-            f"You claimed '{item_name}'!\n\n"
-            "The Admin has been notified. Check the status box "
-            "below for item release details."
-        )
 
-# ==============================================================================
-# Screen 6: Notifications Feed (User-Specific Clear Functionality)
-# ==============================================================================
+# Screen 5: Notifications Feed
 class VolunteerAnnouncementsPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1353,7 +722,6 @@ class VolunteerAnnouncementsPage(QWidget):
         card.setObjectName("volCard")
         self.card_layout = QVBoxLayout(card)
 
-        # Header with Title and Clear All button
         header_layout = QHBoxLayout()
         title = QLabel("Notifications & Announcements")
         title.setObjectName("cardHeading")
@@ -1368,10 +736,9 @@ class VolunteerAnnouncementsPage(QWidget):
         header_layout.addWidget(self.btn_clear_all)
         self.card_layout.addLayout(header_layout)
 
-        # Scrollable Notifications Feed Container
         scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        apply_smooth_scrolling(scroll)
 
         self.feed_widget = QWidget()
         self.feed_container = QVBoxLayout(self.feed_widget)
@@ -1386,49 +753,18 @@ class VolunteerAnnouncementsPage(QWidget):
         return f"{heading}|||{body}"
 
     def refresh_data(self):
-        # Reload notification records from the shared JSON store before
-        # rendering. This fixes stale in-memory data when announcements were
-        # saved by the Admin dashboard after this session was launched.
-        DataStore.reload_notification_data()
-
         while self.feed_container.count():
             item = self.feed_container.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
         account = Session.current_account
-        username = str(account.username) if account else ""
+        username = account.username if account else ""
+        
         cleared_keys = DataStore.cleared_announcements.get(username, [])
+
         visible_announcements = []
-
-        # New admin notifications are stored with recipient usernames and stable IDs.
-        for record in getattr(DataStore, "notification_records", []):
-            if not isinstance(record, dict):
-                continue
-            recipients = record.get("recipients", [])
-            if recipients and not any(
-                str(recipient).strip().casefold() == username.strip().casefold()
-                for recipient in recipients
-            ):
-                continue
-            if not username:
-                continue
-            key = f"notification:{record.get('id', '')}"
-            if key not in cleared_keys:
-                visible_announcements.append((
-                    str(record.get("title", "Notification")),
-                    str(record.get("body", "")),
-                    key
-                ))
-
-        # Keep previously saved announcements visible for backward compatibility.
-        for item in DataStore.announcements:
-            if isinstance(item, dict):
-                heading, body = str(item.get("title", "Notification")), str(item.get("body", ""))
-            elif isinstance(item, (list, tuple)) and len(item) >= 2:
-                heading, body = str(item[0]), str(item[1])
-            else:
-                continue
+        for heading, body in DataStore.announcements:
             key = self._get_announcement_key(heading, body)
             if key not in cleared_keys:
                 visible_announcements.append((heading, body, key))
@@ -1442,28 +778,45 @@ class VolunteerAnnouncementsPage(QWidget):
             return
 
         self.btn_clear_all.setEnabled(True)
+
         for heading, body, key in visible_announcements:
             box = QFrame()
             box.setObjectName("driveItemBox")
             box.setCursor(Qt.CursorShape.PointingHandCursor)
+            
             b_layout = QHBoxLayout(box)
+
             text_v = QVBoxLayout()
             h_lbl = QLabel(heading)
             h_lbl.setStyleSheet("font-weight: bold; font-size: 14px; color: #1e3a8a; border: none;")
+
             preview_body = body[:90] + "..." if len(body) > 90 else body
             b_lbl = QLabel(preview_body)
             b_lbl.setStyleSheet("color: #475569; font-size: 12px; border: none;")
             b_lbl.setWordWrap(True)
+
             text_v.addWidget(h_lbl)
             text_v.addWidget(b_lbl)
+
             btn_clear = QPushButton("Clear")
             btn_clear.setObjectName("secondaryButton")
             btn_clear.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn_clear.clicked.connect(lambda checked=False, k=key: self.clear_single_announcement(k))
+
+            def make_clear_handler(k=key):
+                return lambda: self.clear_single_announcement(k)
+
+            btn_clear.clicked.connect(make_clear_handler(key))
+
             b_layout.addLayout(text_v, 1)
             b_layout.addWidget(btn_clear, 0, Qt.AlignmentFlag.AlignVCenter)
-            box.mousePressEvent = lambda event, h=heading, b=body: self.show_announcement_details(h, b)
+
+            def make_click_handler(h=heading, b=body):
+                return lambda event: self.show_announcement_details(h, b)
+
+            box.mousePressEvent = make_click_handler(heading, body)
+
             self.feed_container.addWidget(box)
+
         self.feed_container.addStretch()
 
     def show_announcement_details(self, heading, body):
@@ -1524,26 +877,7 @@ class VolunteerAnnouncementsPage(QWidget):
             if username not in DataStore.cleared_announcements:
                 DataStore.cleared_announcements[username] = []
 
-            for record in getattr(DataStore, "notification_records", []):
-                if not isinstance(record, dict):
-                    continue
-                recipients = record.get("recipients", [])
-                if recipients and not any(
-                    str(recipient).strip().casefold() == username.strip().casefold()
-                    for recipient in recipients
-                ):
-                    continue
-                key = f"notification:{record.get('id', '')}"
-                if key not in DataStore.cleared_announcements[username]:
-                    DataStore.cleared_announcements[username].append(key)
-
-            for item in DataStore.announcements:
-                if isinstance(item, dict):
-                    heading, body = str(item.get("title", "Notification")), str(item.get("body", ""))
-                elif isinstance(item, (list, tuple)) and len(item) >= 2:
-                    heading, body = str(item[0]), str(item[1])
-                else:
-                    continue
+            for heading, body in DataStore.announcements:
                 key = self._get_announcement_key(heading, body)
                 if key not in DataStore.cleared_announcements[username]:
                     DataStore.cleared_announcements[username].append(key)
@@ -1552,9 +886,7 @@ class VolunteerAnnouncementsPage(QWidget):
             self.refresh_data()
 
 
-# ==============================================================================
-# Screen 7: Volunteer Profile
-# ==============================================================================
+# Screen 6: Volunteer Profile
 class VolunteerProfilePage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1644,21 +976,18 @@ class VolunteerProfilePage(QWidget):
         self.btn_valid_id = QPushButton("Upload Valid ID")
         self.btn_gallery = QPushButton("Gallery")
         self.btn_recent_posts = QPushButton("Recent Posts")
-        self.btn_achievements = QPushButton("Achievements")
         self.btn_change_password = QPushButton("Change Password")
         self.btn_delete_account = QPushButton("Delete Account")
 
         self.btn_valid_id.clicked.connect(self.upload_valid_id)
         self.btn_gallery.clicked.connect(self.show_gallery)
         self.btn_recent_posts.clicked.connect(self.show_recent_posts)
-        self.btn_achievements.clicked.connect(self.show_achievements)
         self.btn_change_password.clicked.connect(self.change_password)
         self.btn_delete_account.clicked.connect(self.delete_account)
 
         card_layout.addWidget(self.btn_valid_id)
         card_layout.addWidget(self.btn_gallery)
         card_layout.addWidget(self.btn_recent_posts)
-        card_layout.addWidget(self.btn_achievements)
         card_layout.addWidget(self.btn_change_password)
         card_layout.addWidget(self.btn_delete_account)
 
@@ -1668,7 +997,6 @@ class VolunteerProfilePage(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidget(card)
-        apply_smooth_scrolling(scroll)
 
         outer.addWidget(scroll)
         self.refresh_data()
@@ -1704,99 +1032,40 @@ class VolunteerProfilePage(QWidget):
         else:
             self.lbl_valid_id_status.setText("Valid ID: Not Uploaded")
 
-    
     def upload_valid_id(self):
         account = Session.current_account
-
         if account is None:
-            QMessageBox.warning(
-                self, "Error", "No active account found."
-            )
+            QMessageBox.warning(self, "Error", "No active account found.")
             return
 
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Upload Valid ID",
-            "",
-            "ID Documents (*.png *.jpg *.jpeg *.pdf)"
-        )
-
+        file_path, _ = QFileDialog.getOpenFileName(self, "Upload Valid ID", "", "ID Documents (*.png *.jpg *.jpeg *.pdf)")
         if not file_path:
             return
 
         source = Path(file_path)
-        project_dir = Path(__file__).resolve().parent
-        target_dir = project_dir / "data" / "valid_ids"
-        target = None
-        old_valid_id_path = getattr(account, "valid_id_path", "")
+        target_dir = Path("data") / "valid_ids"
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_username = re.sub(r"[^A-Za-z0-9_-]", "_", account.username)
+        target = target_dir / f"{safe_username}_valid_id{source.suffix.lower()}"
 
         try:
-            target_dir.mkdir(parents=True, exist_ok=True)
-
-            safe_username = re.sub(
-                r"[^A-Za-z0-9_-]", "_", account.username
-            )
-            target = target_dir / (
-                f"{safe_username}_valid_id_{time.time_ns()}"
-                f"{source.suffix.lower()}"
-            )
-
             shutil.copy2(source, target)
-
-            # Store a relative path for portability.
-            new_valid_id_path = str(target.relative_to(project_dir))
+            account.valid_id_path = str(target.resolve())
 
             accounts = load_accounts()
-            saved_account = next(
-                (
-                    item for item in accounts
-                    if item.username.casefold()
-                    == account.username.casefold()
-                ),
-                None
-            )
+            for index, saved_account in enumerate(accounts):
+                if saved_account.username == account.username:
+                    accounts[index] = account
+                    break
+            else:
+                accounts.append(account)
 
-            if saved_account is None:
-                target.unlink(missing_ok=True)
-                QMessageBox.warning(
-                    self,
-                    "Save Failed",
-                    "The account could not be found in saved records."
-                )
-                return
-
-            previous_saved_path = getattr(
-                saved_account, "valid_id_path", ""
-            )
-
-            saved_account.valid_id_path = new_valid_id_path
-
-            try:
-                save_accounts(accounts)
-            except Exception:
-                saved_account.valid_id_path = previous_saved_path
-                account.valid_id_path = old_valid_id_path
-                target.unlink(missing_ok=True)
-                raise
-
-            # Update the active account after a successful save.
-            account.valid_id_path = new_valid_id_path
-            Session.login(saved_account)
-
+            save_accounts(accounts)
+            QMessageBox.information(self, "Upload Successful", "Your valid ID has been uploaded successfully.")
             self.refresh_data()
-
-            QMessageBox.information(
-                self,
-                "Upload Successful",
-                "Your valid ID has been uploaded successfully."
-            )
-
-        except (OSError, ValueError, TypeError, AttributeError) as error:
-            QMessageBox.critical(
-                self,
-                "Upload Failed",
-                f"Unable to save the ID:\n{error}"
-            )
+        except OSError as error:
+            QMessageBox.critical(self, "Upload Failed", f"Unable to save the ID:\n{error}")
 
     def update_avatar(self):
         account = Session.current_account
@@ -1836,7 +1105,6 @@ class VolunteerProfilePage(QWidget):
         layout = QVBoxLayout(dialog)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        apply_smooth_scrolling(scroll)
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
@@ -2038,7 +1306,7 @@ class VolunteerProfilePage(QWidget):
 
         outer_layout = QVBoxLayout(dialog)
         scroll_area = QScrollArea()
-        apply_smooth_scrolling(scroll_area)
+        scroll_area.setWidgetResizable(True)
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
@@ -2194,166 +1462,12 @@ class VolunteerProfilePage(QWidget):
         QMessageBox.information(self, "Account Deleted", "Your account has been deleted. The application will now close.")
         QApplication.instance().quit()
 
-    def show_achievements(self):
-        QMessageBox.information(
-            self, "Achievements",
-            "Volunteer Achievements\n\nYour achievements and points appear here.\n\n"
-            "Features:\n- Volunteer points tracking\n- Waste reports submitted\n- Clean-up drives attended"
-        )
 
-
-# ==============================================================================
-# Screen 8: Volunteer Tickets and Admin Responses
-# ==============================================================================
-class VolunteerTicketsPage(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-
-        card = QFrame()
-        card.setObjectName("volCard")
-        card_layout = QVBoxLayout(card)
-
-        header = QHBoxLayout()
-
-        title = QLabel("Submit Tickets")
-        title.setObjectName("cardHeading")
-
-        btn_create = QPushButton("Submit Ticket")
-        btn_create.setObjectName("primaryButton")
-        btn_create.clicked.connect(self.open_ticket_dialog)
-
-        header.addWidget(title)
-        header.addStretch()
-        header.addWidget(btn_create)
-        card_layout.addLayout(header)
-
-        self.tickets_list = QListWidget()
-        self.tickets_list.setObjectName("volListWidget")
-        apply_smooth_scrolling(self.tickets_list)
-
-        card_layout.addWidget(self.tickets_list)
-        layout.addWidget(card)
-
-    def refresh_data(self):
-        self.tickets_list.clear()
-
-        account = Session.current_account
-        if account is None:
-            return
-
-        tickets = DataStore.get_tickets_for_user(account.username)
-
-        if not tickets:
-            self.tickets_list.addItem("You have not submitted any tickets yet.")
-            return
-
-        for ticket in reversed(tickets):
-            target = ticket.get("reported_username") or "General Complaint"
-            response = ticket.get("admin_response") or "No admin response yet."
-
-            item_text = (
-                f"Ticket #{ticket.get('id', '?')}\n"
-                f"About: {target}\n"
-                f"Message: {ticket.get('message', '')}\n"
-                f"Status: {ticket.get('status', 'Open')}\n"
-                f"Admin Response: {response}"
-            )
-
-            self.tickets_list.addItem(item_text)
-
-    def open_ticket_dialog(self):
-        account = Session.current_account
-        if account is None:
-            QMessageBox.warning(
-                self, "Login Required",
-                "Please log in before submitting a ticket."
-            )
-            return
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Submit a Ticket")
-        dialog.resize(420, 300)
-
-        form = QFormLayout(dialog)
-
-        txt_reported_user = QLineEdit()
-        txt_reported_user.setPlaceholderText(
-            "Optional: enter the volunteer's username"
-        )
-
-        txt_message = QTextEdit()
-        txt_message.setPlaceholderText(
-            "Explain your concern or complaint..."
-        )
-
-        form.addRow("Volunteer Username (optional):", txt_reported_user)
-        form.addRow("Message:", txt_message)
-
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Cancel
-        )
-
-        submit_button = buttons.addButton(
-            "Submit",
-            QDialogButtonBox.ButtonRole.AcceptRole
-        )
-
-        submit_button.clicked.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-
-        form.addRow(buttons)
-
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
-
-        message = txt_message.toPlainText().strip()
-        reported_username = txt_reported_user.text().strip()
-
-        if not message:
-            QMessageBox.warning(
-                self, "Missing Message",
-                "Please explain your concern before submitting."
-            )
-            return
-
-        if reported_username.casefold() == account.username.casefold():
-            QMessageBox.warning(
-                self, "Invalid Username",
-                "You cannot submit a ticket about your own profile."
-            )
-            return
-
-        try:
-            DataStore.create_report_ticket(
-                username=account.username,
-                message=message,
-                reported_username=reported_username or None
-            )
-            DataStore.save()
-
-        except Exception as error:
-            QMessageBox.critical(
-                self, "Ticket Submission Failed",
-                f"Unable to submit your ticket:\n{error}"
-            )
-            return
-
-        QMessageBox.information(
-            self, "Ticket Submitted",
-            "Your ticket has been submitted to the Admin."
-        )
-
-        self.refresh_data()
-
-# ==============================================================================
 # MAIN VOLUNTEER DASHBOARD CLASS
-# ==============================================================================
 class VolunteerDashboard(QWidget):
     def __init__(self):
         super().__init__()
+        self.setObjectName("Mcontainer")
         self.setWindowTitle("Volunteer Dashboard | Post-Flood Waste Management")
         self.resize(880, 680)
 
@@ -2383,20 +1497,16 @@ class VolunteerDashboard(QWidget):
         self.page_overview = VolunteerOverviewPage()
         self.page_waste_reports = VolunteerWasteReportsPage()
         self.page_scheduled_drives = VolunteerScheduledDrivesPage()
-        self.page_public_feed = VolunteerPublicFeedPage()
         self.page_rewards = VolunteerRewardsPage()
         self.page_announcements = VolunteerAnnouncementsPage()
-        self.page_tickets = VolunteerTicketsPage()
         self.page_profile = VolunteerProfilePage()
 
         self.stack.addWidget(self.page_overview)          # 0
         self.stack.addWidget(self.page_waste_reports)     # 1
         self.stack.addWidget(self.page_scheduled_drives)  # 2
-        self.stack.addWidget(self.page_public_feed)       # 3
-        self.stack.addWidget(self.page_rewards)           # 4
-        self.stack.addWidget(self.page_announcements)     # 5
-        self.stack.addWidget(self.page_tickets)           # 6
-        self.stack.addWidget(self.page_profile)           # 7
+        self.stack.addWidget(self.page_rewards)           # 3
+        self.stack.addWidget(self.page_announcements)     # 4
+        self.stack.addWidget(self.page_profile)           # 5
 
         main_layout.addWidget(self.stack, 1)
 
@@ -2407,22 +1517,18 @@ class VolunteerDashboard(QWidget):
 
         self.btn_nav_home = QPushButton("    Home  ")
         self.btn_nav_reports = QPushButton(" Waste\nReports")
-        self.btn_nav_drives = QPushButton(" Clean-up\nDrive")
-        self.btn_nav_feed = QPushButton(" Public\nFeed")
+        self.btn_nav_drives = QPushButton(" Cleanup\nDrives")
         self.btn_nav_rewards = QPushButton(" Rewards")
         self.btn_nav_announcements = QPushButton(" Notifications")
-        self.btn_nav_tickets = QPushButton(" My\nTickets")
         self.btn_nav_profile = QPushButton(" View\nProfile")
 
         self.nav_buttons = [
             (self.btn_nav_home, 0),
             (self.btn_nav_reports, 1),
             (self.btn_nav_drives, 2),
-            (self.btn_nav_feed, 3),
-            (self.btn_nav_rewards, 4),
-            (self.btn_nav_announcements, 5),
-            (self.btn_nav_tickets, 6),
-            (self.btn_nav_profile, 7),
+            (self.btn_nav_rewards, 3),
+            (self.btn_nav_announcements, 4),
+            (self.btn_nav_profile, 5),
         ]
 
         nav_layout.addStretch()
@@ -2435,25 +1541,19 @@ class VolunteerDashboard(QWidget):
 
         main_layout.addWidget(nav_frame)
 
-        version_label = QLabel("In Development")
+        version_label = QLabel("")
         version_label.setObjectName("versionLabel")
         version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         main_layout.addWidget(version_label)
 
         self.switch_tab(0)
-   
+
     def switch_tab(self, index: int):
         self.stack.setCurrentIndex(index)
-
         current_widget = self.stack.currentWidget()
-
-        # Refresh the selected page
-        if current_widget == self.page_public_feed:
-            current_widget.refresh_public_feed()
-        elif hasattr(current_widget, "refresh_data"):
+        if hasattr(current_widget, "refresh_data"):
             current_widget.refresh_data()
 
-        # Update the active navigation button
         for btn, idx in self.nav_buttons:
             is_active = "true" if idx == index else "false"
             btn.setProperty("active", is_active)
@@ -2461,18 +1561,8 @@ class VolunteerDashboard(QWidget):
             btn.style().polish(btn)
 
     def logout(self):
-        reply = QMessageBox.question(
-            self,
-            "Confirm Logout",
-            "Are you sure you want to log out?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            from login_window import LoginWindow
-
-            Session.logout()
-            self.login_window = LoginWindow()
-            self.login_window.show()
-            self.close()
+        from login_window import LoginWindow
+        Session.logout()
+        self.login_window = LoginWindow()
+        self.login_window.show()
+        self.close()

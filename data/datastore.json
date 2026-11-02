@@ -1,12 +1,23 @@
 {
     "tasks": [
-        "Task: Testing (8pm @ Biringan)",
-        "Task: ssss (aaaa @ sssss)",
-        "Task: fddddd",
-        "Task: sss",
-        "Task: tetsing111111 (ssss @ qqq)"
+        "Task: task1",
+        "Task: task2",
+        "Task: task3"
     ],
-    "announcements": [],
+    "announcements": [
+        [
+            "Reward Update: Canned Goods (35 points)",
+            "Hello Dustin Carl! Your reward claim for 'Canned Goods (35 points)' is now [Ready for Pick-up].\nPickup Location: District 1 Office (Central Plaza)\nInstructions: ready foor pick"
+        ],
+        [
+            "IMPORTANT! URGENT!",
+            "HOY CARLO, PUMUNTA KA DITO SA BARANGAY HALL. \nNEOW!!!"
+        ],
+        [
+            "beware!",
+            "testng123"
+        ]
+    ],
     "waste_reports": [],
     "cleanup_drives": [],
     "report_records": [],
@@ -14,100 +25,35 @@
     "cleared_announcements": {},
     "user_joined_tasks": [
         {
-            "username": "vinceau",
-            "task_id": 0,
-            "task_title": "Task: Testing (8pm @ Biringan)",
-            "joined_at": "2026-10-25 22:03:17",
-            "completed": true,
-            "completed_at": "2026-10-25 22:04:52"
-        },
-        {
-            "username": "vinceau",
-            "task_id": 1,
-            "task_title": "Task: ssss (aaaa @ sssss)",
-            "joined_at": "2026-10-25 22:03:18",
-            "completed": true,
-            "completed_at": "2026-10-25 22:04:54"
-        },
-        {
             "username": "dustin",
             "task_id": 0,
-            "task_title": "Task: Testing (8pm @ Biringan)",
-            "joined_at": "2026-10-25 22:04:31",
+            "task_title": "Task: task1",
+            "joined_at": "2026-10-30 10:12:02",
             "completed": true,
-            "completed_at": "2026-10-25 22:04:34"
+            "completed_at": "2026-10-30 10:12:20"
         },
         {
             "username": "dustin",
             "task_id": 1,
-            "task_title": "Task: ssss (aaaa @ sssss)",
-            "joined_at": "2026-10-25 22:05:13",
+            "task_title": "Task: task2",
+            "joined_at": "2026-10-30 10:12:04",
             "completed": true,
-            "completed_at": "2026-10-25 22:05:15"
-        },
-        {
-            "username": "dustin",
-            "task_id": 4,
-            "task_title": "Task: tetsing111111 (ssss @ qqq)",
-            "joined_at": "2026-10-25 22:06:38",
-            "completed": true,
-            "completed_at": "2026-10-25 22:06:42"
-        },
-        {
-            "username": "dustin",
-            "task_id": 3,
-            "task_title": "Task: sss",
-            "joined_at": "2026-10-25 22:06:43",
-            "completed": true,
-            "completed_at": "2026-10-25 22:06:48"
+            "completed_at": "2026-10-30 10:24:40"
         },
         {
             "username": "dustin",
             "task_id": 2,
-            "task_title": "Task: fddddd",
-            "joined_at": "2026-10-25 22:06:44",
+            "task_title": "Task: task3",
+            "joined_at": "2026-10-30 10:12:06",
             "completed": true,
-            "completed_at": "2026-10-25 22:06:46"
-        },
-        {
-            "username": "vinceau",
-            "task_id": 4,
-            "task_title": "Task: tetsing111111 (ssss @ qqq)",
-            "joined_at": "2026-10-25 22:07:05",
-            "completed": true,
-            "completed_at": "2026-10-25 22:07:36"
-        },
-        {
-            "username": "vinceau",
-            "task_id": 3,
-            "task_title": "Task: sss",
-            "joined_at": "2026-10-25 22:07:38",
-            "completed": true,
-            "completed_at": "2026-10-25 22:07:39"
-        },
-        {
-            "username": "vinceau",
-            "task_id": 2,
-            "task_title": "Task: fddddd",
-            "joined_at": "2026-10-25 22:07:41",
-            "completed": true,
-            "completed_at": "2026-10-25 22:07:43"
+            "completed_at": "2026-10-30 10:24:42"
         }
     ],
     "cleared_tasks": {
-        "vinceau": [
-            "Task: Testing (8pm @ Biringan)",
-            "Task: ssss (aaaa @ sssss)",
-            "Task: tetsing111111 (ssss @ qqq)",
-            "Task: sss",
-            "Task: fddddd"
-        ],
         "dustin": [
-            "Task: Testing (8pm @ Biringan)",
-            "Task: ssss (aaaa @ sssss)",
-            "Task: tetsing111111 (ssss @ qqq)",
-            "Task: sss",
-            "Task: fddddd"
+            "Task: task1",
+            "Task: task2",
+            "Task: task3"
         ]
     }
 }
