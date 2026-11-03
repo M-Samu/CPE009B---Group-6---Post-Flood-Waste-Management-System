@@ -4,14 +4,15 @@ POST-FLOOD WASTE MANAGEMENT SYSTEM DETAILS:
 SETUPS:
 
 Requirements:
-    Python 3.10+
-    PyQt6
+
+- Python 3.10+
+- PyQt6
 
 
+Test Administrator:
 
-- Test Administrator:
-    Username: admin
-    Password: admin123
+- Username: admin
+- Password: admin123
 
 
 SYSTEM PROGRESS:
