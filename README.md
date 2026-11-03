@@ -8,7 +8,8 @@ Requirements:
     PyQt6
 
 
-Test Administrator:
+
+- Test Administrator:
     Username: admin
     Password: admin123
 
